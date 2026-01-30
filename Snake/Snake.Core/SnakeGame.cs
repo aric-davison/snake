@@ -1,6 +1,8 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input.Touch;
 
 namespace Snake.Core
 {
@@ -34,6 +36,24 @@ namespace Snake.Core
         // Input tracking for single key press detection
         private KeyboardState m_previousKeyState;
 
+        // Touch input support
+        private Rectangle m_buttonUp;
+        private Rectangle m_buttonDown;
+        private Rectangle m_buttonLeft;
+        private Rectangle m_buttonRight;
+        private Rectangle m_buttonPause;
+        private Rectangle m_buttonAction; // For start/restart
+        private int m_buttonSize = 80;
+        private int m_buttonMargin = 10;
+        private bool m_previousTouchPressed;
+
+        // Scaling for different screen sizes
+        private int m_screenWidth;
+        private int m_screenHeight;
+        private int m_cellSize;
+        private int m_gridOffsetX;
+        private int m_gridOffsetY;
+
         #endregion
 
         #region Constructor
@@ -47,9 +67,9 @@ namespace Snake.Core
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
 
-            // Set window size based on game board dimensions
-            m_graphics.PreferredBackBufferWidth = GameBoard.GRID_WIDTH * GameBoard.CELL_SIZE;
-            m_graphics.PreferredBackBufferHeight = GameBoard.GRID_HEIGHT * GameBoard.CELL_SIZE + 50; // Extra space for score
+            // Use full screen on mobile platforms
+            m_graphics.IsFullScreen = true;
+            m_graphics.SupportedOrientations = DisplayOrientation.LandscapeLeft | DisplayOrientation.LandscapeRight;
         }
 
         #endregion
@@ -64,10 +84,76 @@ namespace Snake.Core
         protected override void Initialize()
         {
             m_gameBoard = new GameBoard();
-            ResetGame();
             m_previousKeyState = Keyboard.GetState();
+            m_previousTouchPressed = false;
 
             base.Initialize();
+
+            // Get actual screen dimensions after base.Initialize()
+            m_screenWidth = GraphicsDevice.Viewport.Width;
+            m_screenHeight = GraphicsDevice.Viewport.Height;
+
+            // Safe area margins for Android system UI (status bar, nav bar, notches)
+            int safeMarginTop = 80;
+            int safeMarginBottom = 100;
+            int safeMarginX = 60;
+            int safeHeight = m_screenHeight - safeMarginTop - safeMarginBottom;
+            int safeWidth = m_screenWidth - safeMarginX * 2;
+
+            // Score area at top
+            int scoreHeight = 40;
+
+            // Calculate cell size to fit grid in safe area (below score)
+            int gridAreaHeight = safeHeight - scoreHeight;
+            int cellByWidth = safeWidth / GameBoard.GRID_WIDTH;
+            int cellByHeight = gridAreaHeight / GameBoard.GRID_HEIGHT;
+            m_cellSize = Math.Min(cellByWidth, cellByHeight);
+            m_cellSize = Math.Max(m_cellSize, 12); // Minimum cell size
+
+            // Position grid: centered horizontally, below score in safe area
+            int gridWidth = GameBoard.GRID_WIDTH * m_cellSize;
+            int gridHeight = GameBoard.GRID_HEIGHT * m_cellSize;
+            m_gridOffsetX = (m_screenWidth - gridWidth) / 2;
+            m_gridOffsetY = safeMarginTop + scoreHeight;
+
+            // BIG buttons for easy touch
+            m_buttonSize = Math.Max(120, m_screenHeight / 4);
+            m_buttonMargin = 10;
+
+            // D-pad in bottom-left - BIG and easy to hit
+            int dpadCenterX = m_buttonSize + 30;
+            int dpadCenterY = m_screenHeight - m_buttonSize - 30;
+
+            m_buttonUp = new Rectangle(
+                dpadCenterX - m_buttonSize / 2,
+                dpadCenterY - m_buttonSize - 5,
+                m_buttonSize, m_buttonSize);
+            m_buttonDown = new Rectangle(
+                dpadCenterX - m_buttonSize / 2,
+                dpadCenterY + 5,
+                m_buttonSize, m_buttonSize);
+            m_buttonLeft = new Rectangle(
+                dpadCenterX - m_buttonSize - 5,
+                dpadCenterY - m_buttonSize / 2,
+                m_buttonSize, m_buttonSize);
+            m_buttonRight = new Rectangle(
+                dpadCenterX + m_buttonSize / 2 + 5,
+                dpadCenterY - m_buttonSize / 2,
+                m_buttonSize, m_buttonSize);
+
+            // Pause button in bottom-right - also big
+            m_buttonPause = new Rectangle(
+                m_screenWidth - m_buttonSize - 30,
+                m_screenHeight - m_buttonSize - 30,
+                m_buttonSize, m_buttonSize);
+
+            // Action button (start/restart) - centered on screen
+            m_buttonAction = new Rectangle(
+                m_screenWidth / 2 - m_buttonSize,
+                m_screenHeight / 2 + 80,
+                m_buttonSize * 2, m_buttonSize);
+
+            ResetGame();
         }
 
         /// <summary>
@@ -158,8 +244,8 @@ namespace Snake.Core
             // Handle input for snake direction
             HandleInput(keyState);
 
-            // Check for pause
-            if (IsKeyPressed(keyState, Keys.P) || IsKeyPressed(keyState, Keys.Space))
+            // Check for pause (keyboard or touch)
+            if (IsKeyPressed(keyState, Keys.P) || IsKeyPressed(keyState, Keys.Space) || IsPauseButtonPressed())
             {
                 m_gameState = GameState.Paused;
                 return;
@@ -205,8 +291,8 @@ namespace Snake.Core
         /// <param name="keyState">Current keyboard state.</param>
         private void UpdateGameOver(KeyboardState keyState)
         {
-            // Press Space or Enter to restart
-            if (IsKeyPressed(keyState, Keys.Space) || IsKeyPressed(keyState, Keys.Enter))
+            // Press Space or Enter to restart (keyboard or touch)
+            if (IsKeyPressed(keyState, Keys.Space) || IsKeyPressed(keyState, Keys.Enter) || IsActionButtonPressed())
             {
                 ResetGame();
             }
@@ -218,8 +304,8 @@ namespace Snake.Core
         /// <param name="keyState">Current keyboard state.</param>
         private void UpdatePaused(KeyboardState keyState)
         {
-            // Press P or Space to resume
-            if (IsKeyPressed(keyState, Keys.P) || IsKeyPressed(keyState, Keys.Space))
+            // Press P or Space to resume (keyboard or touch)
+            if (IsKeyPressed(keyState, Keys.P) || IsKeyPressed(keyState, Keys.Space) || IsPauseButtonPressed())
             {
                 m_gameState = GameState.Playing;
             }
@@ -233,6 +319,12 @@ namespace Snake.Core
         {
             // Any key starts the game
             if (keyState.GetPressedKeys().Length > 0 && m_previousKeyState.GetPressedKeys().Length == 0)
+            {
+                m_gameState = GameState.Playing;
+            }
+
+            // Touch to start
+            if (IsAnyTouchPressed())
             {
                 m_gameState = GameState.Playing;
             }
@@ -282,6 +374,97 @@ namespace Snake.Core
                 m_snake.SetDirection(Direction.Left);
             else if (keyState.IsKeyDown(Keys.D))
                 m_snake.SetDirection(Direction.Right);
+
+            // Touch input
+            HandleTouchInput();
+        }
+
+        /// <summary>
+        /// Handles touch input for controlling the snake direction.
+        /// </summary>
+        private void HandleTouchInput()
+        {
+            TouchCollection touchState = TouchPanel.GetState();
+
+            // Add padding for easier touch detection
+            int padding = 20;
+
+            foreach (TouchLocation touch in touchState)
+            {
+                if (touch.State == TouchLocationState.Pressed || touch.State == TouchLocationState.Moved)
+                {
+                    Point touchPoint = new Point((int)touch.Position.X, (int)touch.Position.Y);
+
+                    // Expand hit areas with padding
+                    Rectangle upHit = new Rectangle(m_buttonUp.X - padding, m_buttonUp.Y - padding,
+                        m_buttonUp.Width + padding * 2, m_buttonUp.Height + padding * 2);
+                    Rectangle downHit = new Rectangle(m_buttonDown.X - padding, m_buttonDown.Y - padding,
+                        m_buttonDown.Width + padding * 2, m_buttonDown.Height + padding * 2);
+                    Rectangle leftHit = new Rectangle(m_buttonLeft.X - padding, m_buttonLeft.Y - padding,
+                        m_buttonLeft.Width + padding * 2, m_buttonLeft.Height + padding * 2);
+                    Rectangle rightHit = new Rectangle(m_buttonRight.X - padding, m_buttonRight.Y - padding,
+                        m_buttonRight.Width + padding * 2, m_buttonRight.Height + padding * 2);
+
+                    if (upHit.Contains(touchPoint))
+                        m_snake.SetDirection(Direction.Up);
+                    else if (downHit.Contains(touchPoint))
+                        m_snake.SetDirection(Direction.Down);
+                    else if (leftHit.Contains(touchPoint))
+                        m_snake.SetDirection(Direction.Left);
+                    else if (rightHit.Contains(touchPoint))
+                        m_snake.SetDirection(Direction.Right);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Checks if the pause button was just touched.
+        /// </summary>
+        private bool IsPauseButtonPressed()
+        {
+            TouchCollection touchState = TouchPanel.GetState();
+
+            foreach (TouchLocation touch in touchState)
+            {
+                if (touch.State == TouchLocationState.Pressed)
+                {
+                    Point touchPoint = new Point((int)touch.Position.X, (int)touch.Position.Y);
+                    if (m_buttonPause.Contains(touchPoint))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if any touch occurred (for starting game or other actions).
+        /// </summary>
+        private bool IsAnyTouchPressed()
+        {
+            TouchCollection touchState = TouchPanel.GetState();
+            bool currentlyPressed = touchState.Count > 0;
+            bool wasJustPressed = currentlyPressed && !m_previousTouchPressed;
+            m_previousTouchPressed = currentlyPressed;
+            return wasJustPressed;
+        }
+
+        /// <summary>
+        /// Checks if the action button was touched.
+        /// </summary>
+        private bool IsActionButtonPressed()
+        {
+            TouchCollection touchState = TouchPanel.GetState();
+
+            foreach (TouchLocation touch in touchState)
+            {
+                if (touch.State == TouchLocationState.Pressed)
+                {
+                    Point touchPoint = new Point((int)touch.Position.X, (int)touch.Position.Y);
+                    if (m_buttonAction.Contains(touchPoint))
+                        return true;
+                }
+            }
+            return false;
         }
 
         #endregion
@@ -340,6 +523,9 @@ namespace Snake.Core
 
             // Draw score
             DrawScore();
+
+            // Draw touch controls for mobile
+            DrawTouchControls();
         }
 
         /// <summary>
@@ -350,7 +536,7 @@ namespace Snake.Core
             DrawPlaying(); // Show final game state
 
             // Draw semi-transparent overlay
-            Rectangle overlay = new Rectangle(0, 0, m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight);
+            Rectangle overlay = new Rectangle(0, 0, m_screenWidth, m_screenHeight);
             m_spriteBatch.Draw(m_pixelTexture, overlay, Color.Black * 0.7f);
 
             // Draw game over text
@@ -358,23 +544,22 @@ namespace Snake.Core
             {
                 string gameOverText = "GAME OVER";
                 string scoreText = $"Final Score: {m_score}";
-                string restartText = "Press SPACE to restart";
 
                 Vector2 gameOverSize = m_font.MeasureString(gameOverText);
                 Vector2 scoreSize = m_font.MeasureString(scoreText);
-                Vector2 restartSize = m_font.MeasureString(restartText);
 
-                float centerX = m_graphics.PreferredBackBufferWidth / 2;
-                float centerY = m_graphics.PreferredBackBufferHeight / 2;
+                float centerX = m_screenWidth / 2;
+                float centerY = m_screenHeight / 2;
 
                 Vector2 gameOverPos = new Vector2(centerX - gameOverSize.X / 2, centerY - 60);
                 Vector2 scorePos = new Vector2(centerX - scoreSize.X / 2, centerY - 10);
-                Vector2 restartPos = new Vector2(centerX - restartSize.X / 2, centerY + 40);
 
                 m_spriteBatch.DrawString(m_font, gameOverText, gameOverPos, Color.Red);
                 m_spriteBatch.DrawString(m_font, scoreText, scorePos, Color.White);
-                m_spriteBatch.DrawString(m_font, restartText, restartPos, Color.Yellow);
             }
+
+            // Draw restart button
+            DrawActionButton("TAP TO RESTART");
         }
 
         /// <summary>
@@ -385,20 +570,20 @@ namespace Snake.Core
             DrawPlaying(); // Show current game state
 
             // Draw semi-transparent overlay
-            Rectangle overlay = new Rectangle(0, 0, m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight);
+            Rectangle overlay = new Rectangle(0, 0, m_screenWidth, m_screenHeight);
             m_spriteBatch.Draw(m_pixelTexture, overlay, Color.Black * 0.5f);
 
             // Draw paused text
             if (m_font != null)
             {
                 string pausedText = "PAUSED";
-                string resumeText = "Press SPACE to resume";
+                string resumeText = "Tap || to resume";
 
                 Vector2 pausedSize = m_font.MeasureString(pausedText);
                 Vector2 resumeSize = m_font.MeasureString(resumeText);
 
-                float centerX = m_graphics.PreferredBackBufferWidth / 2;
-                float centerY = m_graphics.PreferredBackBufferHeight / 2;
+                float centerX = m_screenWidth / 2;
+                float centerY = m_screenHeight / 2;
 
                 Vector2 pausedPos = new Vector2(centerX - pausedSize.X / 2, centerY - 30);
                 Vector2 resumePos = new Vector2(centerX - resumeSize.X / 2, centerY + 20);
@@ -418,12 +603,12 @@ namespace Snake.Core
             if (m_font != null)
             {
                 string titleText = "SNAKE";
-                string controlsText = "Arrow Keys or WASD to move";
-                string pauseText = "P or SPACE to pause";
-                string startText = "Press any key to start";
+                string controlsText = "Use D-pad to move";
+                string pauseText = "Tap || to pause";
+                string startText = "Tap anywhere to start";
 
-                float centerX = m_graphics.PreferredBackBufferWidth / 2;
-                float centerY = m_graphics.PreferredBackBufferHeight / 2;
+                float centerX = m_screenWidth / 2;
+                float centerY = m_screenHeight / 2;
 
                 Vector2 titleSize = m_font.MeasureString(titleText);
                 Vector2 controlsSize = m_font.MeasureString(controlsText);
@@ -449,7 +634,11 @@ namespace Snake.Core
             if (m_font != null)
             {
                 string scoreText = $"Score: {m_score}";
-                Vector2 scorePosition = new Vector2(10, GameBoard.GRID_HEIGHT * GameBoard.CELL_SIZE + 15);
+                // Position score above the grid, centered
+                Vector2 textSize = m_font.MeasureString(scoreText);
+                Vector2 scorePosition = new Vector2(
+                    m_screenWidth / 2 - textSize.X / 2,
+                    m_gridOffsetY - 35);
                 m_spriteBatch.DrawString(m_font, scoreText, scorePosition, Color.White);
             }
         }
@@ -463,10 +652,10 @@ namespace Snake.Core
             for (int x = 0; x <= GameBoard.GRID_WIDTH; x++)
             {
                 Rectangle line = new Rectangle(
-                    x * GameBoard.CELL_SIZE,
-                    0,
+                    m_gridOffsetX + x * m_cellSize,
+                    m_gridOffsetY,
                     1,
-                    GameBoard.GRID_HEIGHT * GameBoard.CELL_SIZE
+                    GameBoard.GRID_HEIGHT * m_cellSize
                 );
                 m_spriteBatch.Draw(m_pixelTexture, line, Color.DarkGray * 0.3f);
             }
@@ -475,9 +664,9 @@ namespace Snake.Core
             for (int y = 0; y <= GameBoard.GRID_HEIGHT; y++)
             {
                 Rectangle line = new Rectangle(
-                    0,
-                    y * GameBoard.CELL_SIZE,
-                    GameBoard.GRID_WIDTH * GameBoard.CELL_SIZE,
+                    m_gridOffsetX,
+                    m_gridOffsetY + y * m_cellSize,
+                    GameBoard.GRID_WIDTH * m_cellSize,
                     1
                 );
                 m_spriteBatch.Draw(m_pixelTexture, line, Color.DarkGray * 0.3f);
@@ -492,12 +681,83 @@ namespace Snake.Core
         private void DrawCell(Point position, Color color)
         {
             Rectangle cellRect = new Rectangle(
-                position.X * GameBoard.CELL_SIZE + 1,
-                position.Y * GameBoard.CELL_SIZE + 1,
-                GameBoard.CELL_SIZE - 2,
-                GameBoard.CELL_SIZE - 2
+                m_gridOffsetX + position.X * m_cellSize + 1,
+                m_gridOffsetY + position.Y * m_cellSize + 1,
+                m_cellSize - 2,
+                m_cellSize - 2
             );
             m_spriteBatch.Draw(m_pixelTexture, cellRect, color);
+        }
+
+        /// <summary>
+        /// Draws the touch control buttons for mobile devices.
+        /// </summary>
+        private void DrawTouchControls()
+        {
+            Color buttonColor = Color.White * 0.25f;
+            Color buttonBorderColor = Color.White * 0.4f;
+
+            // Draw D-pad buttons (no text labels - position makes it clear)
+            DrawButton(m_buttonUp, buttonColor, buttonBorderColor, "U");
+            DrawButton(m_buttonDown, buttonColor, buttonBorderColor, "D");
+            DrawButton(m_buttonLeft, buttonColor, buttonBorderColor, "L");
+            DrawButton(m_buttonRight, buttonColor, buttonBorderColor, "R");
+
+            // Draw pause button
+            DrawButton(m_buttonPause, buttonColor, buttonBorderColor, "P");
+        }
+
+        /// <summary>
+        /// Draws a single button with border and optional label.
+        /// </summary>
+        private void DrawButton(Rectangle rect, Color fillColor, Color borderColor, string label)
+        {
+            // Draw border
+            m_spriteBatch.Draw(m_pixelTexture, rect, borderColor);
+
+            // Draw fill (slightly smaller)
+            Rectangle innerRect = new Rectangle(rect.X + 2, rect.Y + 2, rect.Width - 4, rect.Height - 4);
+            m_spriteBatch.Draw(m_pixelTexture, innerRect, fillColor);
+
+            // Draw label
+            if (m_font != null && !string.IsNullOrEmpty(label))
+            {
+                Vector2 labelSize = m_font.MeasureString(label);
+                Vector2 labelPos = new Vector2(
+                    rect.X + (rect.Width - labelSize.X) / 2,
+                    rect.Y + (rect.Height - labelSize.Y) / 2
+                );
+                m_spriteBatch.DrawString(m_font, label, labelPos, Color.White * 0.7f);
+            }
+        }
+
+        /// <summary>
+        /// Draws the action button for start/restart screens.
+        /// </summary>
+        private void DrawActionButton(string label)
+        {
+            Color buttonColor = Color.Green * 0.5f;
+            Color borderColor = Color.Green * 0.8f;
+
+            // Draw border
+            m_spriteBatch.Draw(m_pixelTexture, m_buttonAction, borderColor);
+
+            // Draw fill
+            Rectangle innerRect = new Rectangle(
+                m_buttonAction.X + 2, m_buttonAction.Y + 2,
+                m_buttonAction.Width - 4, m_buttonAction.Height - 4);
+            m_spriteBatch.Draw(m_pixelTexture, innerRect, buttonColor);
+
+            // Draw label
+            if (m_font != null)
+            {
+                Vector2 labelSize = m_font.MeasureString(label);
+                Vector2 labelPos = new Vector2(
+                    m_buttonAction.X + (m_buttonAction.Width - labelSize.X) / 2,
+                    m_buttonAction.Y + (m_buttonAction.Height - labelSize.Y) / 2
+                );
+                m_spriteBatch.DrawString(m_font, label, labelPos, Color.White);
+            }
         }
 
         #endregion
