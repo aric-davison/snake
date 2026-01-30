@@ -8,7 +8,7 @@ internal class Program
     /// </summary>
     /// <param name="args">Command-line arguments passed to the application.</param>
     private static void Main(string[] args)
-    {
+   {
         using var game = new SnakeGame();
         game.Run();
     }

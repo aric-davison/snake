@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using System;
+using System.Linq;
 
 namespace Snake.Core
 {
@@ -50,11 +51,15 @@ namespace Snake.Core
             Point newPosition;
             int maxAttempts = 100; // Prevent infinite loop in case board is full
             int attempts = 0;
+            bool isValidPosition;
 
             do
             {
                 newPosition = GenerateRandomPosition(gameBoard);
                 attempts++;
+
+                // Check if position overlaps with snake
+                isValidPosition = !snake.AllSegments.Contains(newPosition);
 
                 // Safety check: if we can't find a valid position after many attempts,
                 // just place it anywhere (this would only happen if the board is nearly full)
@@ -63,7 +68,7 @@ namespace Snake.Core
                     break;
                 }
             }
-            while (false);
+            while (!isValidPosition);
 
             m_position = newPosition;
         }

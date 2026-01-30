@@ -31,6 +31,9 @@ namespace Snake.Core
         private const double UPDATE_INTERVAL = 0.15; // Seconds between snake moves
         private int m_score;
 
+        // Input tracking for single key press detection
+        private KeyboardState m_previousKeyState;
+
         #endregion
 
         #region Constructor
@@ -43,7 +46,7 @@ namespace Snake.Core
             m_graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
-            
+
             // Set window size based on game board dimensions
             m_graphics.PreferredBackBufferWidth = GameBoard.GRID_WIDTH * GameBoard.CELL_SIZE;
             m_graphics.PreferredBackBufferHeight = GameBoard.GRID_HEIGHT * GameBoard.CELL_SIZE + 50; // Extra space for score
@@ -61,16 +64,25 @@ namespace Snake.Core
         protected override void Initialize()
         {
             m_gameBoard = new GameBoard();
+            ResetGame();
+            m_previousKeyState = Keyboard.GetState();
+
+            base.Initialize();
+        }
+
+        /// <summary>
+        /// Resets the game to initial state for starting a new game.
+        /// </summary>
+        private void ResetGame()
+        {
             m_snake = new Snake(GameBoard.GRID_WIDTH / 2, GameBoard.GRID_HEIGHT / 2);
             m_food = new Food();
-            m_gameState = GameState.Playing;
+            m_gameState = GameState.Start;
             m_score = 0;
             m_timeSinceLastUpdate = 0;
 
             // Spawn initial food
             m_food.Spawn(m_gameBoard, m_snake);
-
-            base.Initialize();
         }
 
         /// <summary>
@@ -89,7 +101,7 @@ namespace Snake.Core
             // For now, we'll handle the case where it might not exist
             try
             {
-                m_font = Content.Load<SpriteFont>("GameFont");
+                m_font = Content.Load<SpriteFont>("Fonts/Hud");
             }
             catch
             {
@@ -109,21 +121,30 @@ namespace Snake.Core
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            KeyboardState currentKeyState = Keyboard.GetState();
+
             // Allow exit with Escape key
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
-                Keyboard.GetState().IsKeyDown(Keys.Escape))
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
+                currentKeyState.IsKeyDown(Keys.Escape))
                 Exit();
 
             switch (m_gameState)
             {
+                case GameState.Start:
+                    UpdateStart(currentKeyState);
+                    break;
                 case GameState.Playing:
-                    UpdatePlaying(gameTime);
+                    UpdatePlaying(gameTime, currentKeyState);
                     break;
                 case GameState.GameOver:
-                    UpdateGameOver();
+                    UpdateGameOver(currentKeyState);
+                    break;
+                case GameState.Paused:
+                    UpdatePaused(currentKeyState);
                     break;
             }
 
+            m_previousKeyState = currentKeyState;
             base.Update(gameTime);
         }
 
@@ -131,53 +152,136 @@ namespace Snake.Core
         /// Updates the game logic when in the Playing state.
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        private void UpdatePlaying(GameTime gameTime)
+        /// <param name="keyState">Current keyboard state.</param>
+        private void UpdatePlaying(GameTime gameTime, KeyboardState keyState)
         {
             // Handle input for snake direction
-            HandleInput();
+            HandleInput(keyState);
+
+            // Check for pause
+            if (IsKeyPressed(keyState, Keys.P) || IsKeyPressed(keyState, Keys.Space))
+            {
+                m_gameState = GameState.Paused;
+                return;
+            }
 
             // Update snake position based on time interval
             m_timeSinceLastUpdate += gameTime.ElapsedGameTime.TotalSeconds;
-            
+
             if (m_timeSinceLastUpdate >= UPDATE_INTERVAL)
             {
                 m_timeSinceLastUpdate = 0;
-                // Move the snake                
-                // Check for collisions with walls or self
-                // Check for food collision              
+
+                // Move the snake
+                m_snake.Move();
+
+                // Check for wall collision
+                if (CheckWallCollision())
+                {
+                    m_gameState = GameState.GameOver;
+                    return;
+                }
+
+                // Check for self collision
+                if (m_snake.CheckSelfCollision())
+                {
+                    m_gameState = GameState.GameOver;
+                    return;
+                }
+
+                // Check for food collision
+                if (m_snake.Head == m_food.Position)
+                {
+                    m_score += 10;
+                    m_snake.Grow();
+                    m_food.Spawn(m_gameBoard, m_snake);
+                }
             }
         }
 
         /// <summary>
         /// Updates the game logic when in the GameOver state.
         /// </summary>
-        private void UpdateGameOver()
+        /// <param name="keyState">Current keyboard state.</param>
+        private void UpdateGameOver(KeyboardState keyState)
         {
-            // Press Space to restart
-            //if (Keyboard.GetState().IsKeyDown(Keys.Space))
-            //{
-            //    Initialize();
-            //}
+            // Press Space or Enter to restart
+            if (IsKeyPressed(keyState, Keys.Space) || IsKeyPressed(keyState, Keys.Enter))
+            {
+                ResetGame();
+            }
+        }
+
+        /// <summary>
+        /// Updates the game logic when in the Paused state.
+        /// </summary>
+        /// <param name="keyState">Current keyboard state.</param>
+        private void UpdatePaused(KeyboardState keyState)
+        {
+            // Press P or Space to resume
+            if (IsKeyPressed(keyState, Keys.P) || IsKeyPressed(keyState, Keys.Space))
+            {
+                m_gameState = GameState.Playing;
+            }
+        }
+
+        /// <summary>
+        /// Updates the game logic when in the Start state.
+        /// </summary>
+        /// <param name="keyState">Current keyboard state.</param>
+        private void UpdateStart(KeyboardState keyState)
+        {
+            // Any key starts the game
+            if (keyState.GetPressedKeys().Length > 0 && m_previousKeyState.GetPressedKeys().Length == 0)
+            {
+                m_gameState = GameState.Playing;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a key was just pressed this frame (not held from previous frame).
+        /// </summary>
+        private bool IsKeyPressed(KeyboardState current, Keys key)
+        {
+            return current.IsKeyDown(key) && m_previousKeyState.IsKeyUp(key);
+        }
+
+        /// <summary>
+        /// Checks if the snake head has collided with the wall boundaries.
+        /// </summary>
+        /// <returns>True if wall collision detected.</returns>
+        private bool CheckWallCollision()
+        {
+            Point head = m_snake.Head;
+            return head.X < 0 || head.X >= GameBoard.GRID_WIDTH ||
+                   head.Y < 0 || head.Y >= GameBoard.GRID_HEIGHT;
         }
 
         /// <summary>
         /// Handles keyboard input for controlling the snake direction.
         /// </summary>
-        private void HandleInput()
+        /// <param name="keyState">Current keyboard state.</param>
+        private void HandleInput(KeyboardState keyState)
         {
-            KeyboardState keyState = Keyboard.GetState();
+            // Arrow keys
+            if (keyState.IsKeyDown(Keys.Up))
+                m_snake.SetDirection(Direction.Up);
+            else if (keyState.IsKeyDown(Keys.Down))
+                m_snake.SetDirection(Direction.Down);
+            else if (keyState.IsKeyDown(Keys.Left))
+                m_snake.SetDirection(Direction.Left);
+            else if (keyState.IsKeyDown(Keys.Right))
+                m_snake.SetDirection(Direction.Right);
 
-            // Keys.Up
-            // Keys.Down,
-            // Keyse.Left,
-            // Keys.Right,
-
-            // Keys.W
-            // Keys.A
-            // Keys.S
-            // Keys.D
-            
-            //if (keyState.IsKeyDown(Keys.Up) || keyState.IsKeyDown(Keys.W))          
+            // WASD keys
+            else if (keyState.IsKeyDown(Keys.W))
+                m_snake.SetDirection(Direction.Up);
+            else if (keyState.IsKeyDown(Keys.S))
+                m_snake.SetDirection(Direction.Down);
+            else if (keyState.IsKeyDown(Keys.A))
+                m_snake.SetDirection(Direction.Left);
+            else if (keyState.IsKeyDown(Keys.D))
+                m_snake.SetDirection(Direction.Right);
         }
 
         #endregion
@@ -190,11 +294,27 @@ namespace Snake.Core
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            // Clears 
+            // Clears
             GraphicsDevice.Clear(Color.Black);
 
             m_spriteBatch.Begin();
-            DrawPlaying();            
+
+            switch (m_gameState)
+            {
+                case GameState.Start:
+                    DrawStart();
+                    break;
+                case GameState.Playing:
+                    DrawPlaying();
+                    break;
+                case GameState.GameOver:
+                    DrawGameOver();
+                    break;
+                case GameState.Paused:
+                    DrawPaused();
+                    break;
+            }
+
             m_spriteBatch.End();
 
             base.Draw(gameTime);
@@ -229,35 +349,95 @@ namespace Snake.Core
         {
             DrawPlaying(); // Show final game state
 
-            // Draw game over overlay
+            // Draw semi-transparent overlay
+            Rectangle overlay = new Rectangle(0, 0, m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight);
+            m_spriteBatch.Draw(m_pixelTexture, overlay, Color.Black * 0.7f);
+
+            // Draw game over text
             if (m_font != null)
             {
                 string gameOverText = "GAME OVER";
-                string scoreText = $"Score: {m_score}";
+                string scoreText = $"Final Score: {m_score}";
                 string restartText = "Press SPACE to restart";
 
                 Vector2 gameOverSize = m_font.MeasureString(gameOverText);
                 Vector2 scoreSize = m_font.MeasureString(scoreText);
                 Vector2 restartSize = m_font.MeasureString(restartText);
 
-                Vector2 gameOverPos = new Vector2(
-                    (m_graphics.PreferredBackBufferWidth - gameOverSize.X) / 2,
-                    (m_graphics.PreferredBackBufferHeight - gameOverSize.Y) / 2 - 50
-                );
+                float centerX = m_graphics.PreferredBackBufferWidth / 2;
+                float centerY = m_graphics.PreferredBackBufferHeight / 2;
 
-                Vector2 scorePos = new Vector2(
-                    (m_graphics.PreferredBackBufferWidth - scoreSize.X) / 2,
-                    gameOverPos.Y + 40
-                );
-
-                Vector2 restartPos = new Vector2(
-                    (m_graphics.PreferredBackBufferWidth - restartSize.X) / 2,
-                    scorePos.Y + 40
-                );
+                Vector2 gameOverPos = new Vector2(centerX - gameOverSize.X / 2, centerY - 60);
+                Vector2 scorePos = new Vector2(centerX - scoreSize.X / 2, centerY - 10);
+                Vector2 restartPos = new Vector2(centerX - restartSize.X / 2, centerY + 40);
 
                 m_spriteBatch.DrawString(m_font, gameOverText, gameOverPos, Color.Red);
                 m_spriteBatch.DrawString(m_font, scoreText, scorePos, Color.White);
                 m_spriteBatch.DrawString(m_font, restartText, restartPos, Color.Yellow);
+            }
+        }
+
+        /// <summary>
+        /// Draws the game when in the Paused state.
+        /// </summary>
+        private void DrawPaused()
+        {
+            DrawPlaying(); // Show current game state
+
+            // Draw semi-transparent overlay
+            Rectangle overlay = new Rectangle(0, 0, m_graphics.PreferredBackBufferWidth, m_graphics.PreferredBackBufferHeight);
+            m_spriteBatch.Draw(m_pixelTexture, overlay, Color.Black * 0.5f);
+
+            // Draw paused text
+            if (m_font != null)
+            {
+                string pausedText = "PAUSED";
+                string resumeText = "Press SPACE to resume";
+
+                Vector2 pausedSize = m_font.MeasureString(pausedText);
+                Vector2 resumeSize = m_font.MeasureString(resumeText);
+
+                float centerX = m_graphics.PreferredBackBufferWidth / 2;
+                float centerY = m_graphics.PreferredBackBufferHeight / 2;
+
+                Vector2 pausedPos = new Vector2(centerX - pausedSize.X / 2, centerY - 30);
+                Vector2 resumePos = new Vector2(centerX - resumeSize.X / 2, centerY + 20);
+
+                m_spriteBatch.DrawString(m_font, pausedText, pausedPos, Color.Yellow);
+                m_spriteBatch.DrawString(m_font, resumeText, resumePos, Color.White);
+            }
+        }
+
+        /// <summary>
+        /// Draws the game when in the Start state.
+        /// </summary>
+        private void DrawStart()
+        {
+            DrawGrid();  // Show empty grid as background
+
+            if (m_font != null)
+            {
+                string titleText = "SNAKE";
+                string controlsText = "Arrow Keys or WASD to move";
+                string pauseText = "P or SPACE to pause";
+                string startText = "Press any key to start";
+
+                float centerX = m_graphics.PreferredBackBufferWidth / 2;
+                float centerY = m_graphics.PreferredBackBufferHeight / 2;
+
+                Vector2 titleSize = m_font.MeasureString(titleText);
+                Vector2 controlsSize = m_font.MeasureString(controlsText);
+                Vector2 pauseSize = m_font.MeasureString(pauseText);
+                Vector2 startSize = m_font.MeasureString(startText);
+
+                m_spriteBatch.DrawString(m_font, titleText,
+                    new Vector2(centerX - titleSize.X / 2, centerY - 80), Color.Green);
+                m_spriteBatch.DrawString(m_font, controlsText,
+                    new Vector2(centerX - controlsSize.X / 2, centerY - 20), Color.White);
+                m_spriteBatch.DrawString(m_font, pauseText,
+                    new Vector2(centerX - pauseSize.X / 2, centerY + 20), Color.White);
+                m_spriteBatch.DrawString(m_font, startText,
+                    new Vector2(centerX - startSize.X / 2, centerY + 70), Color.Yellow);
             }
         }
 

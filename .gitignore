@@ -338,3 +338,8 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
+
+# Claude and BMAD
+.claude/
+_bmad/
+_bmad-output/
