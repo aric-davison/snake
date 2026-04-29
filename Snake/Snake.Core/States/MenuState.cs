@@ -7,17 +7,17 @@ using Snake.Core.Rendering;
 namespace Snake.Core.States
 {
     /// <summary>
-    /// Handles the start/title screen state.
+    /// Handles the menu/title screen state.
     /// </summary>
-    public class StartState : IGameStateHandler
+    public class MenuState : IGameStateHandler
     {
         private readonly GameEngine m_engine;
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
 
-        public GameState StateType => GameState.Start;
+        public GameState StateType => GameState.Menu;
 
-        public StartState(GameEngine engine, GameConfig config, VisualConfig visuals)
+        public MenuState(GameEngine engine, GameConfig config, VisualConfig visuals)
         {
             m_engine = engine;
             m_config = config;

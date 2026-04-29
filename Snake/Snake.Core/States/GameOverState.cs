@@ -37,7 +37,7 @@ namespace Snake.Core.States
             // Restart on action button or Enter/Space
             if (input.ActionPressed)
             {
-                return GameState.Start;
+                return GameState.Menu;
             }
 
             return null;

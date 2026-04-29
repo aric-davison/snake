@@ -84,14 +84,13 @@ namespace Snake.Core
             // Create state handlers
             m_states = new Dictionary<GameState, IGameStateHandler>
             {
-                { GameState.Start, new StartState(m_engine, m_gameConfig, m_visualConfig) },
+                { GameState.Menu, new MenuState(m_engine, m_gameConfig, m_visualConfig) },
                 { GameState.Playing, new PlayingState(m_engine, m_gameConfig) },
                 { GameState.Paused, new PausedState(m_engine, m_gameConfig, m_visualConfig) },
                 { GameState.GameOver, new GameOverState(m_engine, m_gameConfig, m_visualConfig) }
             };
 
-            // Start in the Start state
-            m_currentState = m_states[GameState.Start];
+            m_currentState = m_states[GameState.Menu];
             m_currentState.Enter();
         }
 

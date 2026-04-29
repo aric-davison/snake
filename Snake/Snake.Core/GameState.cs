@@ -8,7 +8,7 @@ namespace Snake.Core
         /// <summary>
         /// The game is at the start screen, waiting for player to begin.
         /// </summary>
-        Start,
+        Menu,
 
         /// <summary>
         /// The game is currently being played.
