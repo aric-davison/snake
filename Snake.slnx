@@ -5,6 +5,6 @@
   <Project Path="Snake/Snake.Core/Snake.Core.csproj" />
   <Project Path="Snake/Snake.DesktopGL/Snake.DesktopGL.csproj" />
   <Project Path="Snake/Snake.iOS/Snake.iOS.csproj">
-    <Deploy />
+    <Deploy Solution="Debug|*" />
   </Project>
 </Solution>

@@ -6,6 +6,11 @@ namespace Snake.Core
     public enum GameState
     {
         /// <summary>
+        /// The game is at the start screen, waiting for player to begin.
+        /// </summary>
+        Start,
+
+        /// <summary>
         /// The game is currently being played.
         /// </summary>
         Playing,
