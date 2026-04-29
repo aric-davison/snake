@@ -23,6 +23,21 @@ namespace Snake.Core
         /// <summary>
         /// The game is paused (optional state for future expansion).
         /// </summary>
-        Paused
+        Paused,
+
+        /// <summary>
+        /// The game is in the settings menu (optional state for future expansion).
+        /// </summary>
+        Settings,
+
+        /// <summary>
+        /// The game is in the upgrade shop (optional state for future expansion).
+        /// </summary>
+        UpgradeShop,
+
+        /// <summary>
+        /// The game is in the Slots minigame (optional state for future expansion).
+        /// </summary>
+        Slots
     }
 }
