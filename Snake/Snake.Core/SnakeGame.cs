@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
 using Snake.Core.Input;
+using Snake.Core.Persistence;
 using Snake.Core.Rendering;
 using Snake.Core.States;
 
@@ -27,6 +28,10 @@ namespace Snake.Core
         private IInputManager m_inputManager;
         private IGameRenderer m_renderer;
         private GameEngine m_engine;
+
+        // Persistence
+        private SaveManager m_saveManager;
+        private PlayerData m_playerData;
 
         // State management
         private Dictionary<GameState, IGameStateHandler> m_states;
@@ -77,6 +82,10 @@ namespace Snake.Core
                 m_gameConfig.GridWidth,
                 m_gameConfig.GridHeight);
 
+            // Load persistent player data (P1 in SDD §3)
+            m_saveManager = new SaveManager();
+            m_playerData = m_saveManager.Load();
+
             // Create core systems
             m_inputManager = new InputManager(m_layoutConfig);
             m_engine = new GameEngine(m_gameConfig);
@@ -113,6 +122,7 @@ namespace Snake.Core
             // Handle exit request
             if (input.ExitRequested)
             {
+                m_saveManager.Save(m_playerData);
                 Exit();
                 return;
             }
