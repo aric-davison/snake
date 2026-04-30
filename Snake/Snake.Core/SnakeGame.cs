@@ -143,8 +143,13 @@ namespace Snake.Core
 
         private void TransitionToState(GameState newState)
         {
+            var origin = m_currentState.StateType;
             m_currentState.Exit();
             m_currentState = m_states[newState];
+            if (m_currentState is IOriginAware originAware)
+            {
+                originAware.SetOrigin(origin);
+            }
             m_currentState.Enter();
         }
     }

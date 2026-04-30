@@ -7,9 +7,14 @@ namespace Snake.Core.Input
     public class InputState
     {
         /// <summary>
-        /// The direction requested by the player, if any.
+        /// The direction currently held by the player, if any (level-triggered).
         /// </summary>
         public Direction? RequestedDirection { get; set; }
+
+        /// <summary>
+        /// The direction the player just pressed this frame (edge-triggered, for menu navigation).
+        /// </summary>
+        public Direction? DirectionPressed { get; set; }
 
         /// <summary>
         /// True if pause was requested this frame.
@@ -37,6 +42,7 @@ namespace Snake.Core.Input
         public void Reset()
         {
             RequestedDirection = null;
+            DirectionPressed = null;
             PausePressed = false;
             ActionPressed = false;
             AnyInputPressed = false;

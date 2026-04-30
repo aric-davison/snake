@@ -11,9 +11,18 @@ namespace Snake.Core.States
     /// </summary>
     public class MenuState : IGameStateHandler
     {
+        private static readonly (string Label, GameState Target)[] s_options = new[]
+        {
+            ("Play", GameState.Playing),
+            ("Slots", GameState.Slots),
+            ("Settings", GameState.Settings)
+        };
+
         private readonly GameEngine m_engine;
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
+
+        private int m_selectedIndex;
 
         public GameState StateType => GameState.Menu;
 
@@ -27,6 +36,7 @@ namespace Snake.Core.States
         public void Enter()
         {
             m_engine.Reset();
+            m_selectedIndex = 0;
         }
 
         public void Exit()
@@ -35,10 +45,18 @@ namespace Snake.Core.States
 
         public GameState? Update(GameTime gameTime, InputState input)
         {
-            // Any input starts the game
-            if (input.AnyInputPressed)
+            if (input.DirectionPressed == Direction.Up)
             {
-                return GameState.Playing;
+                m_selectedIndex = (m_selectedIndex - 1 + s_options.Length) % s_options.Length;
+            }
+            else if (input.DirectionPressed == Direction.Down)
+            {
+                m_selectedIndex = (m_selectedIndex + 1) % s_options.Length;
+            }
+
+            if (input.ActionPressed)
+            {
+                return s_options[m_selectedIndex].Target;
             }
 
             return null;
@@ -46,15 +64,20 @@ namespace Snake.Core.States
 
         public void Draw(IGameRenderer renderer)
         {
-            // Draw empty grid as background
             renderer.DrawGrid(m_config.GridWidth, m_config.GridHeight);
 
             if (renderer.HasFont)
             {
-                renderer.DrawCenteredText("SNAKE", m_visuals.TitleColor, -80);
-                renderer.DrawCenteredText("Use D-pad to move", m_visuals.InstructionColor, -20);
-                renderer.DrawCenteredText("Tap || to pause", m_visuals.InstructionColor, 20);
-                renderer.DrawCenteredText("Tap anywhere to start", m_visuals.HighlightColor, 70);
+                renderer.DrawCenteredText("SNAKE", m_visuals.TitleColor, -120);
+
+                for (int i = 0; i < s_options.Length; i++)
+                {
+                    var color = i == m_selectedIndex ? m_visuals.HighlightColor : m_visuals.InstructionColor;
+                    var label = i == m_selectedIndex ? $"> {s_options[i].Label} <" : s_options[i].Label;
+                    renderer.DrawCenteredText(label, color, -20 + i * 35);
+                }
+
+                renderer.DrawCenteredText("Up/Down to navigate, Space to select", m_visuals.InstructionColor, 130);
             }
         }
     }

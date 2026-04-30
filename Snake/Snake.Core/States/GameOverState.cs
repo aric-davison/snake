@@ -11,9 +11,19 @@ namespace Snake.Core.States
     /// </summary>
     public class GameOverState : IGameStateHandler
     {
+        private static readonly (string Label, GameState Target)[] s_options = new[]
+        {
+            ("Play Again", GameState.Playing),
+            ("Main Menu", GameState.Menu),
+            ("Upgrade Shop", GameState.UpgradeShop),
+            ("Slots", GameState.Slots)
+        };
+
         private readonly GameEngine m_engine;
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
+
+        private int m_selectedIndex;
 
         public GameState StateType => GameState.GameOver;
 
@@ -26,6 +36,7 @@ namespace Snake.Core.States
 
         public void Enter()
         {
+            m_selectedIndex = 0;
         }
 
         public void Exit()
@@ -34,10 +45,23 @@ namespace Snake.Core.States
 
         public GameState? Update(GameTime gameTime, InputState input)
         {
-            // Restart on action button or Enter/Space
+            if (input.DirectionPressed == Direction.Up)
+            {
+                m_selectedIndex = (m_selectedIndex - 1 + s_options.Length) % s_options.Length;
+            }
+            else if (input.DirectionPressed == Direction.Down)
+            {
+                m_selectedIndex = (m_selectedIndex + 1) % s_options.Length;
+            }
+
             if (input.ActionPressed)
             {
-                return GameState.Menu;
+                var target = s_options[m_selectedIndex].Target;
+                if (target == GameState.Playing)
+                {
+                    m_engine.Reset();
+                }
+                return target;
             }
 
             return null;
@@ -45,25 +69,26 @@ namespace Snake.Core.States
 
         public void Draw(IGameRenderer renderer)
         {
-            // Draw final game state behind overlay
             renderer.DrawGrid(m_config.GridWidth, m_config.GridHeight);
             renderer.DrawFood(m_engine.Food);
             renderer.DrawSnake(m_engine.Snake);
             renderer.DrawScore(m_engine.Score);
             renderer.DrawTouchControls();
 
-            // Draw semi-transparent overlay
             renderer.DrawOverlay(m_visuals.GameOverOverlayColor);
 
-            // Draw game over text
             if (renderer.HasFont)
             {
-                renderer.DrawCenteredText("GAME OVER", m_visuals.GameOverTextColor, -60);
-                renderer.DrawCenteredText($"Final Score: {m_engine.Score}", m_visuals.ScoreColor, -10);
-            }
+                renderer.DrawCenteredText("GAME OVER", m_visuals.GameOverTextColor, -140);
+                renderer.DrawCenteredText($"Final Score: {m_engine.Score}", m_visuals.ScoreColor, -100);
 
-            // Draw restart button
-            renderer.DrawActionButton("TAP TO RESTART");
+                for (int i = 0; i < s_options.Length; i++)
+                {
+                    var color = i == m_selectedIndex ? m_visuals.HighlightColor : m_visuals.InstructionColor;
+                    var label = i == m_selectedIndex ? $"> {s_options[i].Label} <" : s_options[i].Label;
+                    renderer.DrawCenteredText(label, color, -30 + i * 30);
+                }
+            }
         }
     }
 }

@@ -6,7 +6,8 @@ using Snake.Core.Rendering;
 namespace Snake.Core.States
 {
     /// <summary>
-    /// Handles the upgrade shop state.
+    /// Handles the upgrade shop state. Per the SDD, Back always returns to GameOver
+    /// (purchases from Paused silently end the run, leaving the player in the shop).
     /// </summary>
     public class UpgradeShopState : IGameStateHandler
     {
@@ -31,9 +32,9 @@ namespace Snake.Core.States
 
         public GameState? Update(GameTime gameTime, InputState input)
         {
-            if (input.ActionPressed)
+            if (input.PausePressed || input.ActionPressed)
             {
-                return GameState.Menu;
+                return GameState.GameOver;
             }
 
             return null;
@@ -48,7 +49,7 @@ namespace Snake.Core.States
             {
                 renderer.DrawCenteredText("UPGRADE SHOP", m_visuals.TitleColor, -80);
                 renderer.DrawCenteredText("(coming soon)", m_visuals.InstructionColor, -20);
-                renderer.DrawCenteredText("Tap anywhere to return", m_visuals.HighlightColor, 70);
+                renderer.DrawCenteredText("Tap || to go back", m_visuals.HighlightColor, 70);
             }
 
             renderer.DrawTouchControls();

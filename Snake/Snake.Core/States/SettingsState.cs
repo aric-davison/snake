@@ -6,12 +6,14 @@ using Snake.Core.Rendering;
 namespace Snake.Core.States
 {
     /// <summary>
-    /// Handles the settings state.
+    /// Handles the settings state. Reachable from Menu or Paused; Back returns to origin.
     /// </summary>
-    public class SettingsState : IGameStateHandler
+    public class SettingsState : IGameStateHandler, IOriginAware
     {
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
+
+        private GameState m_origin = GameState.Menu;
 
         public GameState StateType => GameState.Settings;
 
@@ -19,6 +21,11 @@ namespace Snake.Core.States
         {
             m_config = config;
             m_visuals = visuals;
+        }
+
+        public void SetOrigin(GameState origin)
+        {
+            m_origin = origin;
         }
 
         public void Enter()
@@ -31,9 +38,9 @@ namespace Snake.Core.States
 
         public GameState? Update(GameTime gameTime, InputState input)
         {
-            if (input.ActionPressed)
+            if (input.PausePressed || input.ActionPressed)
             {
-                return GameState.Menu;
+                return m_origin;
             }
 
             return null;
@@ -48,7 +55,7 @@ namespace Snake.Core.States
             {
                 renderer.DrawCenteredText("SETTINGS", m_visuals.TitleColor, -80);
                 renderer.DrawCenteredText("(coming soon)", m_visuals.InstructionColor, -20);
-                renderer.DrawCenteredText("Tap anywhere to return", m_visuals.HighlightColor, 70);
+                renderer.DrawCenteredText("Tap || to go back", m_visuals.HighlightColor, 70);
             }
 
             renderer.DrawTouchControls();

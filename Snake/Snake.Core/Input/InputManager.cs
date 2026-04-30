@@ -16,6 +16,7 @@ namespace Snake.Core.Input
 
         private KeyboardState m_previousKeyState;
         private bool m_previousTouchPressed;
+        private Direction? m_previousDirection;
 
         public InputState CurrentState => m_currentState;
 
@@ -47,6 +48,14 @@ namespace Snake.Core.Input
 
             // Process touch input
             ProcessTouchInput(touchState);
+
+            // Edge-detect direction for menu navigation
+            if (m_currentState.RequestedDirection.HasValue &&
+                m_currentState.RequestedDirection != m_previousDirection)
+            {
+                m_currentState.DirectionPressed = m_currentState.RequestedDirection;
+            }
+            m_previousDirection = m_currentState.RequestedDirection;
 
             // Check for any input (for start screen)
             bool currentTouchPressed = touchState.Count > 0;
