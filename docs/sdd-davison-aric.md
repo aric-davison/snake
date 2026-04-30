@@ -55,7 +55,7 @@ The system defines seven states: Menu, Playing, Paused, GameOver, UpgradeShop, S
 
 During gameplay, the player can pause at any time, which transitions to the Paused state. From Paused, the player can resume, access the Upgrade Shop, Slots, or Settings, or quit to the Main Menu. Purchasing an upgrade from the Paused state silently ends the current run; the player remains in the shop and the Back button returns them to GameOver with their session summary.
 
-The GameOver state acts as a secondary hub. The player can start a new run, return to Menu, or access the Upgrade Shop and Slots to spend their accumulated apples. The Slots and Settings states track which state initiated the transition so that the Back button returns the player to the correct origin screen.
+The GameOver state acts as a secondary hub. The player can start a new run, return to Menu, access the Upgrade Shop and Slots to spend their accumulated apples, or open Settings. The Slots and Settings states track which state initiated the transition so that the Back button returns the player to the correct origin screen.
 
 ```mermaid
 stateDiagram-v2
@@ -78,6 +78,7 @@ stateDiagram-v2
     GameOver --> Menu : Main Menu
     GameOver --> UpgradeShop : Upgrades
     GameOver --> Slots : Mini-Games
+    GameOver --> Settings : Settings
 
     UpgradeShop --> GameOver : Back
 
@@ -87,6 +88,7 @@ stateDiagram-v2
 
     Settings --> Menu : Back (from Menu)
     Settings --> Paused : Back (from Paused)
+    Settings --> GameOver : Back (from GameOver)
 ```
 
 ---

@@ -8,6 +8,7 @@ using Snake.Core.Input;
 using Snake.Core.Persistence;
 using Snake.Core.Rendering;
 using Snake.Core.States;
+using Snake.Core.Upgrades;
 
 namespace Snake.Core
 {
@@ -90,6 +91,13 @@ namespace Snake.Core
             m_inputManager = new InputManager(m_layoutConfig);
             m_engine = new GameEngine(m_gameConfig);
 
+            var upgrades = new IUpgrade[]
+            {
+                new SpeedUpgrade(),
+                new AppleValueUpgrade(),
+                new AppleMagnetUpgrade()
+            };
+
             // Create state handlers
             m_states = new Dictionary<GameState, IGameStateHandler>
             {
@@ -97,8 +105,8 @@ namespace Snake.Core
                 { GameState.Playing, new PlayingState(m_engine, m_gameConfig) },
                 { GameState.Paused, new PausedState(m_engine, m_gameConfig, m_visualConfig) },
                 { GameState.GameOver, new GameOverState(m_engine, m_gameConfig, m_visualConfig, m_playerData) },
-                { GameState.Settings, new SettingsState(m_gameConfig, m_visualConfig) },
-                { GameState.UpgradeShop, new UpgradeShopState(m_gameConfig, m_visualConfig) },
+                { GameState.Settings, new SettingsState(m_gameConfig, m_visualConfig, m_playerData, m_saveManager) },
+                { GameState.UpgradeShop, new UpgradeShopState(m_gameConfig, m_visualConfig, m_playerData, upgrades, m_saveManager) },
                 { GameState.Slots, new SlotsState(m_gameConfig, m_visualConfig) }
             };
 

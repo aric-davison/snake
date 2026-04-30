@@ -17,7 +17,8 @@ namespace Snake.Core.States
             ("Play Again", GameState.Playing),
             ("Main Menu", GameState.Menu),
             ("Upgrade Shop", GameState.UpgradeShop),
-            ("Slots", GameState.Slots)
+            ("Slots", GameState.Slots),
+            ("Settings", GameState.Settings)
         };
 
         private readonly GameEngine m_engine;
