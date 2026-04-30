@@ -41,9 +41,9 @@ namespace Snake.Core.Rendering
         void DrawFood(Food food);
 
         /// <summary>
-        /// Draws the current score.
+        /// Draws the in-game HUD: apples earned this run and the player's persistent total.
         /// </summary>
-        void DrawScore(int score);
+        void DrawApples(int sessionApples, int totalBalance);
 
         /// <summary>
         /// Draws the touch control buttons.

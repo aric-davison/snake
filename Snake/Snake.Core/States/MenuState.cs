@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
 using Snake.Core.Input;
+using Snake.Core.Persistence;
 using Snake.Core.Rendering;
 
 namespace Snake.Core.States
@@ -21,21 +22,23 @@ namespace Snake.Core.States
         private readonly GameEngine m_engine;
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
+        private readonly PlayerData m_playerData;
 
         private int m_selectedIndex;
 
         public GameState StateType => GameState.Menu;
 
-        public MenuState(GameEngine engine, GameConfig config, VisualConfig visuals)
+        public MenuState(GameEngine engine, GameConfig config, VisualConfig visuals, PlayerData playerData)
         {
             m_engine = engine;
             m_config = config;
             m_visuals = visuals;
+            m_playerData = playerData;
         }
 
         public void Enter()
         {
-            m_engine.Reset();
+            m_engine.Reset(m_playerData);
             m_selectedIndex = 0;
         }
 

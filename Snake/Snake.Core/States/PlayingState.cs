@@ -60,7 +60,7 @@ namespace Snake.Core.States
             renderer.DrawGrid(m_config.GridWidth, m_config.GridHeight);
             renderer.DrawFood(m_engine.Food);
             renderer.DrawSnake(m_engine.Snake);
-            renderer.DrawScore(m_engine.Score);
+            renderer.DrawApples(m_engine.SessionApples, m_engine.AppleBalance);
             renderer.DrawTouchControls();
         }
     }

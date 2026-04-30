@@ -99,17 +99,17 @@ namespace Snake.Core.Rendering
             DrawCell(food.Position, m_visuals.FoodColor);
         }
 
-        public void DrawScore(int score)
+        public void DrawApples(int sessionApples, int totalBalance)
         {
             if (m_font == null) return;
 
-            string scoreText = $"Score: {score}";
-            Vector2 textSize = m_font.MeasureString(scoreText);
+            string text = $"Apples: {sessionApples}    Total: {totalBalance}";
+            Vector2 textSize = m_font.MeasureString(text);
             Vector2 position = new Vector2(
                 m_layout.ScreenWidth / 2 - textSize.X / 2,
                 m_layout.GridOffsetY - m_layout.ScoreYOffset);
 
-            m_spriteBatch.DrawString(m_font, scoreText, position, m_visuals.ScoreColor);
+            m_spriteBatch.DrawString(m_font, text, position, m_visuals.ScoreColor);
         }
 
         public void DrawTouchControls()

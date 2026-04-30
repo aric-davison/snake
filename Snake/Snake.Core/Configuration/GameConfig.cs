@@ -11,9 +11,9 @@ namespace Snake.Core.Configuration
         public double UpdateInterval { get; set; } = 0.15;
 
         /// <summary>
-        /// Points awarded for eating food.
+        /// Apples awarded per food eaten (before Apple Value upgrade tier bonus).
         /// </summary>
-        public int PointsPerFood { get; set; } = 10;
+        public int ApplesPerFood { get; set; } = 1;
 
         /// <summary>
         /// Width of the game grid in cells.

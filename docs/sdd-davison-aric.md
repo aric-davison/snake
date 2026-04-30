@@ -320,7 +320,7 @@ classDiagram
         +DrawGrid(int, int)
         +DrawSnake(Snake)
         +DrawFood(Food)
-        +DrawScore(int)
+        +DrawApples(int sessionApples, int totalBalance)
         +DrawOverlay(Color)
         +DrawCenteredText(string, Color, float)
         +HasFont bool
@@ -533,7 +533,7 @@ classDiagram
 
     class GameConfig {
         +double UpdateInterval
-        +int PointsPerFood
+        +int ApplesPerFood
         +int GridWidth
         +int GridHeight
         +int InitialSnakeLength

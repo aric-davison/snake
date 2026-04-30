@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
 using Snake.Core.Input;
+using Snake.Core.Persistence;
 using Snake.Core.Rendering;
 
 namespace Snake.Core.States
@@ -22,16 +23,18 @@ namespace Snake.Core.States
         private readonly GameEngine m_engine;
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
+        private readonly PlayerData m_playerData;
 
         private int m_selectedIndex;
 
         public GameState StateType => GameState.GameOver;
 
-        public GameOverState(GameEngine engine, GameConfig config, VisualConfig visuals)
+        public GameOverState(GameEngine engine, GameConfig config, VisualConfig visuals, PlayerData playerData)
         {
             m_engine = engine;
             m_config = config;
             m_visuals = visuals;
+            m_playerData = playerData;
         }
 
         public void Enter()
@@ -59,7 +62,7 @@ namespace Snake.Core.States
                 var target = s_options[m_selectedIndex].Target;
                 if (target == GameState.Playing)
                 {
-                    m_engine.Reset();
+                    m_engine.Reset(m_playerData);
                 }
                 return target;
             }
@@ -72,7 +75,7 @@ namespace Snake.Core.States
             renderer.DrawGrid(m_config.GridWidth, m_config.GridHeight);
             renderer.DrawFood(m_engine.Food);
             renderer.DrawSnake(m_engine.Snake);
-            renderer.DrawScore(m_engine.Score);
+            renderer.DrawApples(m_engine.SessionApples, m_engine.AppleBalance);
             renderer.DrawTouchControls();
 
             renderer.DrawOverlay(m_visuals.GameOverOverlayColor);
@@ -80,7 +83,7 @@ namespace Snake.Core.States
             if (renderer.HasFont)
             {
                 renderer.DrawCenteredText("GAME OVER", m_visuals.GameOverTextColor, -140);
-                renderer.DrawCenteredText($"Final Score: {m_engine.Score}", m_visuals.ScoreColor, -100);
+                renderer.DrawCenteredText($"Apples this run: {m_engine.SessionApples}", m_visuals.ScoreColor, -100);
 
                 for (int i = 0; i < s_options.Length; i++)
                 {

@@ -93,10 +93,10 @@ namespace Snake.Core
             // Create state handlers
             m_states = new Dictionary<GameState, IGameStateHandler>
             {
-                { GameState.Menu, new MenuState(m_engine, m_gameConfig, m_visualConfig) },
+                { GameState.Menu, new MenuState(m_engine, m_gameConfig, m_visualConfig, m_playerData) },
                 { GameState.Playing, new PlayingState(m_engine, m_gameConfig) },
                 { GameState.Paused, new PausedState(m_engine, m_gameConfig, m_visualConfig) },
-                { GameState.GameOver, new GameOverState(m_engine, m_gameConfig, m_visualConfig) },
+                { GameState.GameOver, new GameOverState(m_engine, m_gameConfig, m_visualConfig, m_playerData) },
                 { GameState.Settings, new SettingsState(m_gameConfig, m_visualConfig) },
                 { GameState.UpgradeShop, new UpgradeShopState(m_gameConfig, m_visualConfig) },
                 { GameState.Slots, new SlotsState(m_gameConfig, m_visualConfig) }
