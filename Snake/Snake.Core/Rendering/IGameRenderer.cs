@@ -51,6 +51,12 @@ namespace Snake.Core.Rendering
         void DrawTouchControls();
 
         /// <summary>
+        /// Draws a sub-rectangle of a registered sprite sheet to the given destination
+        /// rectangle on the virtual canvas. Sheets are loaded by name in LoadContent.
+        /// </summary>
+        void DrawSprite(string sheetName, Rectangle destination, Rectangle source);
+
+        /// <summary>
         /// Draws a semi-transparent overlay.
         /// </summary>
         void DrawOverlay(Color color);
@@ -59,6 +65,13 @@ namespace Snake.Core.Rendering
         /// Draws centered text at the specified vertical offset from center.
         /// </summary>
         void DrawCenteredText(string text, Color color, float yOffset);
+
+        /// <summary>
+        /// Draws a centered menu option label. The label position does not change between
+        /// selected and unselected states; when selected, a "(" cursor is drawn to the left
+        /// of the label without shifting it.
+        /// </summary>
+        void DrawMenuOption(string label, Color color, float yOffset, bool selected);
 
         /// <summary>
         /// Draws the action button with a label.

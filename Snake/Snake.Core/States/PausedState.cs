@@ -81,16 +81,16 @@ namespace Snake.Core.States
 
             if (renderer.HasFont)
             {
-                renderer.DrawCenteredText("PAUSED", m_visuals.PausedTextColor, -130);
+                renderer.DrawCenteredText("PAUSED", m_visuals.PausedTextColor, -70);
 
                 for (int i = 0; i < s_options.Length; i++)
                 {
-                    var color = i == m_selectedIndex ? m_visuals.HighlightColor : m_visuals.InstructionColor;
-                    var label = i == m_selectedIndex ? $"> {s_options[i].Label} <" : s_options[i].Label;
-                    renderer.DrawCenteredText(label, color, -50 + i * 30);
+                    bool selected = i == m_selectedIndex;
+                    var color = selected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
+                    renderer.DrawMenuOption(s_options[i].Label, color, -40 + i * 12, selected);
                 }
 
-                renderer.DrawCenteredText("Tap || to resume", m_visuals.InstructionColor, 130);
+                renderer.DrawCenteredText("Tap || to resume", m_visuals.InstructionColor, 70);
             }
         }
     }

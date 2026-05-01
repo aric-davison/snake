@@ -54,9 +54,9 @@ namespace Snake.Core.States
 
             if (renderer.HasFont)
             {
-                renderer.DrawCenteredText("SLOTS", m_visuals.TitleColor, -80);
+                renderer.DrawCenteredText("SLOTS", m_visuals.TitleColor, -50);
                 renderer.DrawCenteredText("(coming soon)", m_visuals.InstructionColor, -20);
-                renderer.DrawCenteredText("Tap || to go back", m_visuals.HighlightColor, 70);
+                renderer.DrawCenteredText("Tap || to go back", m_visuals.HighlightColor, 60);
             }
 
             renderer.DrawTouchControls();

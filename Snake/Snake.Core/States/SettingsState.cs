@@ -104,20 +104,20 @@ namespace Snake.Core.States
             {
                 if (m_confirmingDelete)
                 {
-                    renderer.DrawCenteredText("DELETE SAVE?", m_visuals.GameOverTextColor, -60);
-                    renderer.DrawCenteredText("This wipes your apples and upgrades.", m_visuals.InstructionColor, -10);
-                    renderer.DrawCenteredText("This cannot be undone.", m_visuals.InstructionColor, 20);
-                    renderer.DrawCenteredText("Space = confirm,  || = cancel", m_visuals.HighlightColor, 80);
+                    renderer.DrawCenteredText("DELETE SAVE?", m_visuals.GameOverTextColor, -40);
+                    renderer.DrawCenteredText("This wipes your apples and upgrades.", m_visuals.InstructionColor, -15);
+                    renderer.DrawCenteredText("This cannot be undone.", m_visuals.InstructionColor, -3);
+                    renderer.DrawCenteredText("Space = confirm,  || = cancel", m_visuals.HighlightColor, 30);
                 }
                 else
                 {
-                    renderer.DrawCenteredText("SETTINGS", m_visuals.TitleColor, -120);
+                    renderer.DrawCenteredText("SETTINGS", m_visuals.TitleColor, -70);
 
                     string audioLabel = $"Audio: {(m_playerData.AudioEnabled ? "On" : "Off")}";
-                    DrawOption(renderer, audioLabel, AudioOptionIndex, -40);
-                    DrawOption(renderer, "Delete Save", DeleteSaveOptionIndex, 0);
+                    DrawOption(renderer, audioLabel, AudioOptionIndex, -30);
+                    DrawOption(renderer, "Delete Save", DeleteSaveOptionIndex, -18);
 
-                    renderer.DrawCenteredText("Up/Down to navigate, Space to select, || to leave", m_visuals.InstructionColor, 90);
+                    renderer.DrawCenteredText("Up/Down nav, Space select, || leave", m_visuals.InstructionColor, 70);
                 }
             }
 
@@ -127,9 +127,8 @@ namespace Snake.Core.States
         private void DrawOption(IGameRenderer renderer, string label, int index, float yOffset)
         {
             bool selected = m_selectedIndex == index;
-            string row = selected ? $"> {label} <" : label;
             Color color = selected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
-            renderer.DrawCenteredText(row, color, yOffset);
+            renderer.DrawMenuOption(label, color, yOffset, selected);
         }
 
         private void WipeSave()

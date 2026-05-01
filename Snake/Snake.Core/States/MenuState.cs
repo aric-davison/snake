@@ -67,20 +67,16 @@ namespace Snake.Core.States
 
         public void Draw(IGameRenderer renderer)
         {
-            renderer.DrawGrid(m_config.GridWidth, m_config.GridHeight);
-
             if (renderer.HasFont)
             {
-                renderer.DrawCenteredText("SNAKE", m_visuals.TitleColor, -120);
+                renderer.DrawCenteredText("SNAKE", m_visuals.TitleColor, -60);
 
                 for (int i = 0; i < s_options.Length; i++)
                 {
-                    var color = i == m_selectedIndex ? m_visuals.HighlightColor : m_visuals.InstructionColor;
-                    var label = i == m_selectedIndex ? $"> {s_options[i].Label} <" : s_options[i].Label;
-                    renderer.DrawCenteredText(label, color, -20 + i * 35);
+                    bool selected = i == m_selectedIndex;
+                    var color = selected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
+                    renderer.DrawMenuOption(s_options[i].Label, color, -35 + i * 12, selected);
                 }
-
-                renderer.DrawCenteredText("Up/Down to navigate, Space to select", m_visuals.InstructionColor, 130);
             }
         }
     }

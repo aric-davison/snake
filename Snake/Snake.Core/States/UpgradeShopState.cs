@@ -92,8 +92,8 @@ namespace Snake.Core.States
 
             if (renderer.HasFont)
             {
-                renderer.DrawCenteredText("UPGRADE SHOP", m_visuals.TitleColor, -190);
-                renderer.DrawCenteredText($"Apples: {m_playerData.AppleBalance}", m_visuals.ScoreColor, -150);
+                renderer.DrawCenteredText("UPGRADE SHOP", m_visuals.TitleColor, -78);
+                renderer.DrawCenteredText($"Apples: {m_playerData.AppleBalance}", m_visuals.ScoreColor, -66);
 
                 for (int i = 0; i < m_upgrades.Length; i++)
                 {
@@ -104,9 +104,7 @@ namespace Snake.Core.States
                     bool affordable = !maxed && m_playerData.AppleBalance >= cost;
 
                     string costText = maxed ? "MAXED" : $"{cost} apples";
-                    string row = selected
-                        ? $"> {upgrade.Name} ({upgrade.CurrentTier}/{upgrade.MaxTier}) - {costText} <"
-                        : $"{upgrade.Name} ({upgrade.CurrentTier}/{upgrade.MaxTier}) - {costText}";
+                    string row = $"{upgrade.Name} ({upgrade.CurrentTier}/{upgrade.MaxTier}) - {costText}";
 
                     Color color;
                     if (selected)
@@ -114,12 +112,12 @@ namespace Snake.Core.States
                     else
                         color = maxed ? m_visuals.PausedTextColor : m_visuals.InstructionColor;
 
-                    renderer.DrawCenteredText(row, color, -90 + i * 35);
+                    renderer.DrawMenuOption(row, color, -40 + i * 14, selected);
                 }
 
                 var selectedUpgrade = m_upgrades[m_selectedIndex];
-                renderer.DrawCenteredText(selectedUpgrade.Description, m_visuals.InstructionColor, 60);
-                renderer.DrawCenteredText("Up/Down to navigate, Space to buy, || to leave", m_visuals.InstructionColor, 150);
+                renderer.DrawCenteredText(selectedUpgrade.Description, m_visuals.InstructionColor, 30);
+                renderer.DrawCenteredText("Up/Down nav, Space buy, || leave", m_visuals.InstructionColor, 80);
             }
 
             renderer.DrawTouchControls();

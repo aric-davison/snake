@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -7,16 +8,42 @@ namespace Snake.Core.Rendering
 {
     /// <summary>
     /// Handles all rendering for the game.
-    /// Uses configuration classes for colors and layout.
+    /// Draws into a fixed-size virtual canvas (LayoutConfig.VirtualWidth x VirtualHeight)
+    /// then upscales to the back buffer with point sampling for the retro pixel-perfect look.
     /// </summary>
     public class GameRenderer : IGameRenderer
     {
+        // Snake sheet (Sprites/snake.png) — 32x32, 8x8 tiles in a 4x4 grid:
+        //   Row 0: head_up    head_right  head_down   head_left
+        //   Row 1: body_horiz body_vert   corner_UL   corner_UR
+        //   Row 2: corner_DL  corner_DR   apple       (empty)
+        //   Row 3: tail_up    tail_right  tail_down   tail_left
+        private const string SnakeSheet = "snake";
+        private static readonly Rectangle SrcHeadUp    = new Rectangle( 0,  0, 8, 8);
+        private static readonly Rectangle SrcHeadRight = new Rectangle( 8,  0, 8, 8);
+        private static readonly Rectangle SrcHeadDown  = new Rectangle(16,  0, 8, 8);
+        private static readonly Rectangle SrcHeadLeft  = new Rectangle(24,  0, 8, 8);
+        private static readonly Rectangle SrcBodyHoriz = new Rectangle( 0,  8, 8, 8);
+        private static readonly Rectangle SrcBodyVert  = new Rectangle( 8,  8, 8, 8);
+        private static readonly Rectangle SrcCornerUL  = new Rectangle(16,  8, 8, 8);
+        private static readonly Rectangle SrcCornerUR  = new Rectangle(24,  8, 8, 8);
+        private static readonly Rectangle SrcCornerDL  = new Rectangle( 0, 16, 8, 8);
+        private static readonly Rectangle SrcCornerDR  = new Rectangle( 8, 16, 8, 8);
+        private static readonly Rectangle SrcApple     = new Rectangle(16, 16, 8, 8);
+        private static readonly Rectangle SrcTailUp    = new Rectangle( 0, 24, 8, 8);
+        private static readonly Rectangle SrcTailRight = new Rectangle( 8, 24, 8, 8);
+        private static readonly Rectangle SrcTailDown  = new Rectangle(16, 24, 8, 8);
+        private static readonly Rectangle SrcTailLeft  = new Rectangle(24, 24, 8, 8);
+
         private readonly VisualConfig m_visuals;
         private readonly LayoutConfig m_layout;
+        private readonly Dictionary<string, Texture2D> m_sprites = new Dictionary<string, Texture2D>();
 
+        private GraphicsDevice m_graphicsDevice;
         private SpriteBatch m_spriteBatch;
         private Texture2D m_pixelTexture;
         private SpriteFont m_font;
+        private RenderTarget2D m_canvas;
 
         public bool HasFont => m_font != null;
 
@@ -28,13 +55,20 @@ namespace Snake.Core.Rendering
 
         public void LoadContent(GraphicsDevice device, ContentManager content)
         {
+            m_graphicsDevice = device;
             m_spriteBatch = new SpriteBatch(device);
 
-            // Create a 1x1 white pixel texture for drawing rectangles
             m_pixelTexture = new Texture2D(device, 1, 1);
             m_pixelTexture.SetData(new[] { Color.White });
 
-            // Load font
+            m_canvas = new RenderTarget2D(
+                device,
+                m_layout.VirtualWidth,
+                m_layout.VirtualHeight,
+                false,
+                SurfaceFormat.Color,
+                DepthFormat.None);
+
             try
             {
                 m_font = content.Load<SpriteFont>("Fonts/Hud");
@@ -43,15 +77,38 @@ namespace Snake.Core.Rendering
             {
                 m_font = null;
             }
+
+            TryLoadSheet(content, SnakeSheet, "Sprites/snake");
+        }
+
+        private void TryLoadSheet(ContentManager content, string name, string asset)
+        {
+            try
+            {
+                m_sprites[name] = content.Load<Texture2D>(asset);
+            }
+            catch
+            {
+                // Sheet unavailable; renderer falls back to colored rectangles for affected tiles.
+            }
         }
 
         public void BeginFrame()
         {
-            m_spriteBatch.Begin();
+            m_graphicsDevice.SetRenderTarget(m_canvas);
+            m_graphicsDevice.Clear(m_visuals.BackgroundColor);
+            m_spriteBatch.Begin(samplerState: SamplerState.PointClamp);
         }
 
         public void EndFrame()
         {
+            m_spriteBatch.End();
+
+            // Composite the virtual canvas onto the back buffer (letterboxed, integer scale).
+            m_graphicsDevice.SetRenderTarget(null);
+            m_graphicsDevice.Clear(Color.Black);
+            m_spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            m_spriteBatch.Draw(m_canvas, m_layout.CanvasDestRect, Color.White);
             m_spriteBatch.End();
         }
 
@@ -59,7 +116,6 @@ namespace Snake.Core.Rendering
         {
             Color lineColor = m_visuals.GridLineColor;
 
-            // Draw vertical lines
             for (int x = 0; x <= gridWidth; x++)
             {
                 Rectangle line = new Rectangle(
@@ -70,7 +126,6 @@ namespace Snake.Core.Rendering
                 m_spriteBatch.Draw(m_pixelTexture, line, lineColor);
             }
 
-            // Draw horizontal lines
             for (int y = 0; y <= gridHeight; y++)
             {
                 Rectangle line = new Rectangle(
@@ -84,19 +139,37 @@ namespace Snake.Core.Rendering
 
         public void DrawSnake(Snake snake)
         {
-            // Draw head
-            DrawCell(snake.Head, m_visuals.SnakeHeadColor);
-
-            // Draw body segments
-            foreach (var segment in snake.Body)
+            if (!m_sprites.ContainsKey(SnakeSheet))
             {
-                DrawCell(segment, m_visuals.SnakeBodyColor);
+                // Fallback: solid-colored cells when the sprite sheet failed to load.
+                DrawCell(snake.Head, m_visuals.SnakeHeadColor);
+                foreach (var seg in snake.Body)
+                {
+                    DrawCell(seg, m_visuals.SnakeBodyColor);
+                }
+                return;
+            }
+
+            var segments = new List<Point>(snake.AllSegments);
+            int count = segments.Count;
+            for (int i = 0; i < count; i++)
+            {
+                Rectangle src = PickSnakeTile(segments, i, count, snake.CurrentDirection);
+                Rectangle dest = m_layout.GetCellRectangle(segments[i]);
+                DrawSprite(SnakeSheet, dest, src);
             }
         }
 
         public void DrawFood(Food food)
         {
-            DrawCell(food.Position, m_visuals.FoodColor);
+            if (!m_sprites.ContainsKey(SnakeSheet))
+            {
+                DrawCell(food.Position, m_visuals.FoodColor);
+                return;
+            }
+
+            Rectangle dest = m_layout.GetCellRectangle(food.Position);
+            DrawSprite(SnakeSheet, dest, SrcApple);
         }
 
         public void DrawApples(int sessionApples, int totalBalance)
@@ -106,31 +179,35 @@ namespace Snake.Core.Rendering
             string text = $"Apples: {sessionApples}    Total: {totalBalance}";
             Vector2 textSize = m_font.MeasureString(text);
             Vector2 position = new Vector2(
-                m_layout.ScreenWidth / 2 - textSize.X / 2,
-                m_layout.GridOffsetY - m_layout.ScoreYOffset);
+                m_layout.VirtualWidth / 2 - textSize.X / 2,
+                (m_layout.HudHeight - textSize.Y) / 2);
 
             m_spriteBatch.DrawString(m_font, text, position, m_visuals.ScoreColor);
         }
 
         public void DrawTouchControls()
         {
-            // Skip drawing touch controls on desktop
             if (!m_layout.ShowTouchControls)
                 return;
 
-            // Draw D-pad buttons
             DrawButton(m_layout.ButtonUp, m_visuals.ButtonFillColor, m_visuals.ButtonBorderColor, "U");
             DrawButton(m_layout.ButtonDown, m_visuals.ButtonFillColor, m_visuals.ButtonBorderColor, "D");
             DrawButton(m_layout.ButtonLeft, m_visuals.ButtonFillColor, m_visuals.ButtonBorderColor, "L");
             DrawButton(m_layout.ButtonRight, m_visuals.ButtonFillColor, m_visuals.ButtonBorderColor, "R");
-
-            // Draw pause button
             DrawButton(m_layout.ButtonPause, m_visuals.ButtonFillColor, m_visuals.ButtonBorderColor, "||");
+        }
+
+        public void DrawSprite(string sheetName, Rectangle destination, Rectangle source)
+        {
+            if (m_sprites.TryGetValue(sheetName, out var sheet))
+            {
+                m_spriteBatch.Draw(sheet, destination, source, Color.White);
+            }
         }
 
         public void DrawOverlay(Color color)
         {
-            Rectangle overlay = new Rectangle(0, 0, m_layout.ScreenWidth, m_layout.ScreenHeight);
+            Rectangle overlay = new Rectangle(0, 0, m_layout.VirtualWidth, m_layout.VirtualHeight);
             m_spriteBatch.Draw(m_pixelTexture, overlay, color);
         }
 
@@ -140,22 +217,38 @@ namespace Snake.Core.Rendering
 
             Vector2 textSize = m_font.MeasureString(text);
             Vector2 position = new Vector2(
-                m_layout.ScreenWidth / 2 - textSize.X / 2,
-                m_layout.ScreenHeight / 2 + yOffset);
+                m_layout.VirtualWidth / 2 - textSize.X / 2,
+                m_layout.VirtualHeight / 2 + yOffset);
 
             m_spriteBatch.DrawString(m_font, text, position, color);
         }
 
+        public void DrawMenuOption(string label, Color color, float yOffset, bool selected)
+        {
+            if (m_font == null) return;
+
+            Vector2 textSize = m_font.MeasureString(label);
+            float textX = m_layout.VirtualWidth / 2 - textSize.X / 2;
+            float y = m_layout.VirtualHeight / 2 + yOffset;
+
+            m_spriteBatch.DrawString(m_font, label, new Vector2(textX, y), color);
+
+            if (selected)
+            {
+                const string cursor = "(";
+                Vector2 cursorSize = m_font.MeasureString(cursor);
+                float cursorX = textX - cursorSize.X - 2;
+                m_spriteBatch.DrawString(m_font, cursor, new Vector2(cursorX, y), color);
+            }
+        }
+
         public void DrawActionButton(string label)
         {
-            // Draw border
             m_spriteBatch.Draw(m_pixelTexture, m_layout.ButtonAction, m_visuals.ActionButtonBorderColor);
 
-            // Draw fill
             Rectangle innerRect = m_layout.GetButtonInnerRect(m_layout.ButtonAction);
             m_spriteBatch.Draw(m_pixelTexture, innerRect, m_visuals.ActionButtonFillColor);
 
-            // Draw label
             if (m_font != null)
             {
                 Vector2 labelSize = m_font.MeasureString(label);
@@ -166,6 +259,62 @@ namespace Snake.Core.Rendering
             }
         }
 
+        private static Rectangle PickSnakeTile(List<Point> segments, int i, int count, Direction headDirection)
+        {
+            // Head: face the snake's current direction.
+            if (i == 0)
+            {
+                return headDirection switch
+                {
+                    Direction.Up => SrcHeadUp,
+                    Direction.Down => SrcHeadDown,
+                    Direction.Left => SrcHeadLeft,
+                    _ => SrcHeadRight
+                };
+            }
+
+            // Tail: sprite is named for the direction the body attaches (toward the head),
+            // so tail_right means the next segment is to the right of the tail.
+            if (i == count - 1)
+            {
+                Point tail = segments[i];
+                Point prev = segments[i - 1];
+                int dx = prev.X - tail.X;
+                int dy = prev.Y - tail.Y;
+                if (dx > 0) return SrcTailRight;
+                if (dx < 0) return SrcTailLeft;
+                if (dy > 0) return SrcTailDown;
+                return SrcTailUp;
+            }
+
+            // Body: examine neighbors. If both neighbors are along the same axis it's
+            // a straight segment, otherwise it's a corner whose orientation is the union
+            // of the two neighbor directions.
+            Point cur = segments[i];
+            Point pSeg = segments[i - 1];
+            Point nSeg = segments[i + 1];
+
+            int prevDx = pSeg.X - cur.X;
+            int prevDy = pSeg.Y - cur.Y;
+            int nextDx = nSeg.X - cur.X;
+            int nextDy = nSeg.Y - cur.Y;
+
+            bool prevHoriz = prevDx != 0;
+            bool nextHoriz = nextDx != 0;
+
+            if (prevHoriz && nextHoriz) return SrcBodyHoriz;
+            if (!prevHoriz && !nextHoriz) return SrcBodyVert;
+
+            bool hasUp = prevDy < 0 || nextDy < 0;
+            bool hasLeft = prevDx < 0 || nextDx < 0;
+            bool hasRight = prevDx > 0 || nextDx > 0;
+
+            if (hasUp && hasLeft) return SrcCornerUL;
+            if (hasUp && hasRight) return SrcCornerUR;
+            if (hasLeft) return SrcCornerDL;
+            return SrcCornerDR;
+        }
+
         private void DrawCell(Point position, Color color)
         {
             Rectangle cellRect = m_layout.GetCellRectangle(position);
@@ -174,14 +323,11 @@ namespace Snake.Core.Rendering
 
         private void DrawButton(Rectangle rect, Color fillColor, Color borderColor, string label)
         {
-            // Draw border
             m_spriteBatch.Draw(m_pixelTexture, rect, borderColor);
 
-            // Draw fill (slightly smaller)
             Rectangle innerRect = m_layout.GetButtonInnerRect(rect);
             m_spriteBatch.Draw(m_pixelTexture, innerRect, fillColor);
 
-            // Draw label
             if (m_font != null && !string.IsNullOrEmpty(label))
             {
                 Vector2 labelSize = m_font.MeasureString(label);

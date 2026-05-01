@@ -83,14 +83,14 @@ namespace Snake.Core.States
 
             if (renderer.HasFont)
             {
-                renderer.DrawCenteredText("GAME OVER", m_visuals.GameOverTextColor, -140);
-                renderer.DrawCenteredText($"Apples this run: {m_engine.SessionApples}", m_visuals.ScoreColor, -100);
+                renderer.DrawCenteredText("GAME OVER", m_visuals.GameOverTextColor, -75);
+                renderer.DrawCenteredText($"Apples this run: {m_engine.SessionApples}", m_visuals.ScoreColor, -62);
 
                 for (int i = 0; i < s_options.Length; i++)
                 {
-                    var color = i == m_selectedIndex ? m_visuals.HighlightColor : m_visuals.InstructionColor;
-                    var label = i == m_selectedIndex ? $"> {s_options[i].Label} <" : s_options[i].Label;
-                    renderer.DrawCenteredText(label, color, -30 + i * 30);
+                    bool selected = i == m_selectedIndex;
+                    var color = selected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
+                    renderer.DrawMenuOption(s_options[i].Label, color, -40 + i * 11, selected);
                 }
             }
         }

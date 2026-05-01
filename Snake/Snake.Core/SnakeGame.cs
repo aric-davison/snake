@@ -43,6 +43,7 @@ namespace Snake.Core
             m_graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            Window.AllowUserResizing = true;
 
             // Platform-specific settings
             bool isMobile = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
@@ -77,11 +78,8 @@ namespace Snake.Core
             m_layoutConfig.ShowTouchControls = isMobile;
 
             // Calculate layout based on actual screen dimensions
-            m_layoutConfig.CalculateLayout(
-                GraphicsDevice.Viewport.Width,
-                GraphicsDevice.Viewport.Height,
-                m_gameConfig.GridWidth,
-                m_gameConfig.GridHeight);
+            RecalculateLayout();
+            Window.ClientSizeChanged += (_, _) => RecalculateLayout();
 
             // Load persistent player data (P1 in SDD §3)
             m_saveManager = new SaveManager();
@@ -157,6 +155,15 @@ namespace Snake.Core
             m_renderer.EndFrame();
 
             base.Draw(gameTime);
+        }
+
+        private void RecalculateLayout()
+        {
+            m_layoutConfig.CalculateLayout(
+                GraphicsDevice.Viewport.Width,
+                GraphicsDevice.Viewport.Height,
+                m_gameConfig.GridWidth,
+                m_gameConfig.GridHeight);
         }
 
         private void TransitionToState(GameState newState)
