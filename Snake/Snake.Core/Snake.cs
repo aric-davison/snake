@@ -11,7 +11,6 @@ namespace Snake.Core
     public class Snake
     {
         private readonly List<Point> m_body;
-        private List<Point> m_previousBody;
         private Direction m_direction;
         private Direction m_nextDirection;
         private bool m_shouldGrow;
