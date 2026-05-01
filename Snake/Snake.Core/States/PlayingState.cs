@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Snake.Core.Audio;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
 using Snake.Core.Input;
@@ -13,17 +14,20 @@ namespace Snake.Core.States
     {
         private readonly GameEngine m_engine;
         private readonly GameConfig m_config;
+        private readonly AudioManager m_audio;
 
         public GameState StateType => GameState.Playing;
 
-        public PlayingState(GameEngine engine, GameConfig config)
+        public PlayingState(GameEngine engine, GameConfig config, AudioManager audio)
         {
             m_engine = engine;
             m_config = config;
+            m_audio = audio;
         }
 
         public void Enter()
         {
+            m_audio.OnPlayingEnter();
         }
 
         public void Exit()

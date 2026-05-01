@@ -5,6 +5,7 @@ namespace Snake.Core.Upgrades
     public class SpeedUpgrade : IUpgrade
     {
         public string Name => "Speed";
+        public string DisplayName => "Speed";
         public string Description => "Snake moves faster.";
         public int CurrentTier { get; set; }
         public int MaxTier => 5;

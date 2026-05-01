@@ -9,7 +9,12 @@ namespace Snake.Core.Upgrades
     /// </summary>
     public interface IUpgrade
     {
+        /// <summary>Stable identifier used as the save-data key. Do not rename.</summary>
         string Name { get; }
+
+        /// <summary>Short label shown in the upgrade shop UI. Safe to change.</summary>
+        string DisplayName { get; }
+
         string Description { get; }
         int CurrentTier { get; set; }
         int MaxTier { get; }

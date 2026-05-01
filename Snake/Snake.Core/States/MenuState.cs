@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Snake.Core.Audio;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
 using Snake.Core.Input;
@@ -23,23 +24,26 @@ namespace Snake.Core.States
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
         private readonly PlayerData m_playerData;
+        private readonly AudioManager m_audio;
 
         private int m_selectedIndex;
 
         public GameState StateType => GameState.Menu;
 
-        public MenuState(GameEngine engine, GameConfig config, VisualConfig visuals, PlayerData playerData)
+        public MenuState(GameEngine engine, GameConfig config, VisualConfig visuals, PlayerData playerData, AudioManager audio)
         {
             m_engine = engine;
             m_config = config;
             m_visuals = visuals;
             m_playerData = playerData;
+            m_audio = audio;
         }
 
         public void Enter()
         {
             m_engine.Reset(m_playerData);
             m_selectedIndex = 0;
+            m_audio.OnMenuEnter();
         }
 
         public void Exit()
@@ -67,6 +71,8 @@ namespace Snake.Core.States
 
         public void Draw(IGameRenderer renderer)
         {
+            renderer.DrawMenuBackground();
+
             if (renderer.HasFont)
             {
                 renderer.DrawCenteredText("SNAKE", m_visuals.TitleColor, -60);
@@ -75,7 +81,7 @@ namespace Snake.Core.States
                 {
                     bool selected = i == m_selectedIndex;
                     var color = selected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
-                    renderer.DrawMenuOption(s_options[i].Label, color, -35 + i * 12, selected);
+                    renderer.DrawMenuOption(s_options[i].Label, color, -25 + i * 16, selected);
                 }
             }
         }

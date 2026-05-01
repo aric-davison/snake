@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Snake.Core.Audio;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
 using Snake.Core.Input;
@@ -25,22 +26,25 @@ namespace Snake.Core.States
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
         private readonly PlayerData m_playerData;
+        private readonly AudioManager m_audio;
 
         private int m_selectedIndex;
 
         public GameState StateType => GameState.GameOver;
 
-        public GameOverState(GameEngine engine, GameConfig config, VisualConfig visuals, PlayerData playerData)
+        public GameOverState(GameEngine engine, GameConfig config, VisualConfig visuals, PlayerData playerData, AudioManager audio)
         {
             m_engine = engine;
             m_config = config;
             m_visuals = visuals;
             m_playerData = playerData;
+            m_audio = audio;
         }
 
         public void Enter()
         {
             m_selectedIndex = 0;
+            m_audio.OnGameOverEnter();
         }
 
         public void Exit()
@@ -90,7 +94,7 @@ namespace Snake.Core.States
                 {
                     bool selected = i == m_selectedIndex;
                     var color = selected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
-                    renderer.DrawMenuOption(s_options[i].Label, color, -40 + i * 11, selected);
+                    renderer.DrawMenuOption(s_options[i].Label, color, -40 + i * 16, selected);
                 }
             }
         }

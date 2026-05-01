@@ -8,10 +8,9 @@ using Snake.Core.Upgrades;
 namespace Snake.Core.States
 {
     /// <summary>
-    /// Handles the upgrade shop state. Per the SDD, Back always returns to GameOver
-    /// (purchases from Paused silently end the run, leaving the player in the shop).
+    /// Handles the upgrade shop state. Reachable from Paused or GameOver; Back returns to origin.
     /// </summary>
-    public class UpgradeShopState : IGameStateHandler
+    public class UpgradeShopState : IGameStateHandler, IOriginAware
     {
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
@@ -19,9 +18,18 @@ namespace Snake.Core.States
         private readonly IUpgrade[] m_upgrades;
         private readonly SaveManager m_saveManager;
 
+        private GameState m_origin = GameState.GameOver;
         private int m_selectedIndex;
 
+        private int BackOptionIndex => m_upgrades.Length;
+        private int TotalOptions => m_upgrades.Length + 1;
+
         public GameState StateType => GameState.UpgradeShop;
+
+        public void SetOrigin(GameState origin)
+        {
+            m_origin = origin;
+        }
 
         public UpgradeShopState(
             GameConfig config,
@@ -56,20 +64,25 @@ namespace Snake.Core.States
         {
             if (input.PausePressed)
             {
-                return GameState.GameOver;
+                return m_origin;
             }
 
             if (input.DirectionPressed == Direction.Up)
             {
-                m_selectedIndex = (m_selectedIndex - 1 + m_upgrades.Length) % m_upgrades.Length;
+                m_selectedIndex = (m_selectedIndex - 1 + TotalOptions) % TotalOptions;
             }
             else if (input.DirectionPressed == Direction.Down)
             {
-                m_selectedIndex = (m_selectedIndex + 1) % m_upgrades.Length;
+                m_selectedIndex = (m_selectedIndex + 1) % TotalOptions;
             }
 
             if (input.ActionPressed)
             {
+                if (m_selectedIndex == BackOptionIndex)
+                {
+                    return m_origin;
+                }
+
                 var upgrade = m_upgrades[m_selectedIndex];
                 int beforeTier = upgrade.CurrentTier;
                 upgrade.Apply(m_playerData);
@@ -103,8 +116,8 @@ namespace Snake.Core.States
                     int cost = maxed ? 0 : upgrade.GetCost(upgrade.CurrentTier);
                     bool affordable = !maxed && m_playerData.AppleBalance >= cost;
 
-                    string costText = maxed ? "MAXED" : $"{cost} apples";
-                    string row = $"{upgrade.Name} ({upgrade.CurrentTier}/{upgrade.MaxTier}) - {costText}";
+                    string costText = maxed ? "MAXED" : $"cost: {cost}";
+                    string row = $"{upgrade.DisplayName} {upgrade.CurrentTier}-{upgrade.MaxTier}  {costText}";
 
                     Color color;
                     if (selected)
@@ -112,12 +125,18 @@ namespace Snake.Core.States
                     else
                         color = maxed ? m_visuals.PausedTextColor : m_visuals.InstructionColor;
 
-                    renderer.DrawMenuOption(row, color, -40 + i * 14, selected);
+                    renderer.DrawMenuOption(row, color, -40 + i * 16, selected);
                 }
 
-                var selectedUpgrade = m_upgrades[m_selectedIndex];
-                renderer.DrawCenteredText(selectedUpgrade.Description, m_visuals.InstructionColor, 30);
-                renderer.DrawCenteredText("Up/Down nav, Space buy, || leave", m_visuals.InstructionColor, 80);
+                bool backSelected = m_selectedIndex == BackOptionIndex;
+                Color backColor = backSelected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
+                renderer.DrawMenuOption("Back", backColor, -40 + BackOptionIndex * 16, backSelected);
+
+                if (m_selectedIndex < m_upgrades.Length)
+                {
+                    var selectedUpgrade = m_upgrades[m_selectedIndex];
+                    renderer.DrawCenteredText(selectedUpgrade.Description, m_visuals.InstructionColor, 30);
+                }
             }
 
             renderer.DrawTouchControls();

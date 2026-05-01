@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Snake.Core.Audio;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
 using Snake.Core.Input;
@@ -33,6 +34,9 @@ namespace Snake.Core
         // Persistence
         private SaveManager m_saveManager;
         private PlayerData m_playerData;
+
+        // Audio
+        private AudioManager m_audioManager;
 
         // State management
         private Dictionary<GameState, IGameStateHandler> m_states;
@@ -88,6 +92,9 @@ namespace Snake.Core
             // Create core systems
             m_inputManager = new InputManager(m_layoutConfig);
             m_engine = new GameEngine(m_gameConfig);
+            m_audioManager = new AudioManager(m_playerData);
+            m_audioManager.LoadContent(Content);
+            m_engine.Events.FoodEaten += m_audioManager.PlayAppleCrunch;
 
             var upgrades = new IUpgrade[]
             {
@@ -99,11 +106,11 @@ namespace Snake.Core
             // Create state handlers
             m_states = new Dictionary<GameState, IGameStateHandler>
             {
-                { GameState.Menu, new MenuState(m_engine, m_gameConfig, m_visualConfig, m_playerData) },
-                { GameState.Playing, new PlayingState(m_engine, m_gameConfig) },
-                { GameState.Paused, new PausedState(m_engine, m_gameConfig, m_visualConfig) },
-                { GameState.GameOver, new GameOverState(m_engine, m_gameConfig, m_visualConfig, m_playerData) },
-                { GameState.Settings, new SettingsState(m_gameConfig, m_visualConfig, m_playerData, m_saveManager) },
+                { GameState.Menu, new MenuState(m_engine, m_gameConfig, m_visualConfig, m_playerData, m_audioManager) },
+                { GameState.Playing, new PlayingState(m_engine, m_gameConfig, m_audioManager) },
+                { GameState.Paused, new PausedState(m_engine, m_gameConfig, m_visualConfig, m_audioManager) },
+                { GameState.GameOver, new GameOverState(m_engine, m_gameConfig, m_visualConfig, m_playerData, m_audioManager) },
+                { GameState.Settings, new SettingsState(m_gameConfig, m_visualConfig, m_playerData, m_saveManager, m_audioManager) },
                 { GameState.UpgradeShop, new UpgradeShopState(m_gameConfig, m_visualConfig, m_playerData, upgrades, m_saveManager) },
                 { GameState.Slots, new SlotsState(m_gameConfig, m_visualConfig) }
             };

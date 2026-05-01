@@ -15,8 +15,8 @@ namespace Snake.Core.Configuration
         public Color FoodColor { get; set; } = Color.Red;
 
         // Background and grid
-        public Color BackgroundColor { get; set; } = Color.Black;
-        public Color GridLineColor { get; set; } = new Color(Color.DarkGray, 0.3f);
+        public Color BackgroundColor { get; set; } = new Color(0x88, 0x84, 0x7C);
+        public Color GridLineColor { get; set; } = Color.Black;
 
         // Touch control buttons
         public Color ButtonFillColor { get; set; } = new Color(Color.White, 0.25f);

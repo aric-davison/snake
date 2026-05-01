@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Snake.Core.Audio;
 using Snake.Core.Configuration;
 using Snake.Core.Input;
 using Snake.Core.Persistence;
@@ -11,27 +12,35 @@ namespace Snake.Core.States
     /// </summary>
     public class SettingsState : IGameStateHandler, IOriginAware
     {
-        private const int OptionCount = 2;
-        private const int AudioOptionIndex = 0;
-        private const int DeleteSaveOptionIndex = 1;
+        private const int OptionCount = 4;
+        private const int MusicSliderIndex = 0;
+        private const int SfxSliderIndex = 1;
+        private const int DeleteSaveOptionIndex = 2;
+        private const int BackOptionIndex = 3;
+
+        private const int ConfirmNoIndex = 0;
+        private const int ConfirmYesIndex = 1;
 
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
         private readonly PlayerData m_playerData;
         private readonly SaveManager m_saveManager;
+        private readonly AudioManager m_audio;
 
         private GameState m_origin = GameState.Menu;
         private int m_selectedIndex;
         private bool m_confirmingDelete;
+        private int m_confirmIndex;
 
         public GameState StateType => GameState.Settings;
 
-        public SettingsState(GameConfig config, VisualConfig visuals, PlayerData playerData, SaveManager saveManager)
+        public SettingsState(GameConfig config, VisualConfig visuals, PlayerData playerData, SaveManager saveManager, AudioManager audio)
         {
             m_config = config;
             m_visuals = visuals;
             m_playerData = playerData;
             m_saveManager = saveManager;
+            m_audio = audio;
         }
 
         public void SetOrigin(GameState origin)
@@ -43,6 +52,7 @@ namespace Snake.Core.States
         {
             m_selectedIndex = 0;
             m_confirmingDelete = false;
+            m_confirmIndex = ConfirmNoIndex;
         }
 
         public void Exit()
@@ -53,14 +63,28 @@ namespace Snake.Core.States
         {
             if (m_confirmingDelete)
             {
+                if (input.DirectionPressed == Direction.Up)
+                {
+                    m_confirmIndex = (m_confirmIndex - 1 + 2) % 2;
+                }
+                else if (input.DirectionPressed == Direction.Down)
+                {
+                    m_confirmIndex = (m_confirmIndex + 1) % 2;
+                }
+
                 if (input.ActionPressed)
                 {
-                    WipeSave();
+                    if (m_confirmIndex == ConfirmYesIndex)
+                    {
+                        WipeSave();
+                    }
                     m_confirmingDelete = false;
+                    m_confirmIndex = ConfirmNoIndex;
                 }
                 else if (input.PausePressed)
                 {
                     m_confirmingDelete = false;
+                    m_confirmIndex = ConfirmNoIndex;
                 }
                 return null;
             }
@@ -78,17 +102,25 @@ namespace Snake.Core.States
             {
                 m_selectedIndex = (m_selectedIndex + 1) % OptionCount;
             }
+            else if (input.DirectionPressed == Direction.Left)
+            {
+                AdjustSlider(-1);
+            }
+            else if (input.DirectionPressed == Direction.Right)
+            {
+                AdjustSlider(+1);
+            }
 
             if (input.ActionPressed)
             {
-                if (m_selectedIndex == AudioOptionIndex)
-                {
-                    m_playerData.AudioEnabled = !m_playerData.AudioEnabled;
-                    m_saveManager.Save(m_playerData);
-                }
-                else if (m_selectedIndex == DeleteSaveOptionIndex)
+                if (m_selectedIndex == DeleteSaveOptionIndex)
                 {
                     m_confirmingDelete = true;
+                    m_confirmIndex = ConfirmNoIndex;
+                }
+                else if (m_selectedIndex == BackOptionIndex)
+                {
+                    return m_origin;
                 }
             }
 
@@ -105,23 +137,58 @@ namespace Snake.Core.States
                 if (m_confirmingDelete)
                 {
                     renderer.DrawCenteredText("DELETE SAVE?", m_visuals.GameOverTextColor, -40);
-                    renderer.DrawCenteredText("This wipes your apples and upgrades.", m_visuals.InstructionColor, -15);
-                    renderer.DrawCenteredText("This cannot be undone.", m_visuals.InstructionColor, -3);
-                    renderer.DrawCenteredText("Space = confirm,  || = cancel", m_visuals.HighlightColor, 30);
+                    renderer.DrawCenteredText("This cannot be undone.", m_visuals.InstructionColor, -15);
+
+                    bool noSelected = m_confirmIndex == ConfirmNoIndex;
+                    bool yesSelected = m_confirmIndex == ConfirmYesIndex;
+                    renderer.DrawMenuOption("No", Color.Green, 16, noSelected);
+                    renderer.DrawMenuOption("Yes", Color.Red, 32, yesSelected);
                 }
                 else
                 {
                     renderer.DrawCenteredText("SETTINGS", m_visuals.TitleColor, -70);
 
-                    string audioLabel = $"Audio: {(m_playerData.AudioEnabled ? "On" : "Off")}";
-                    DrawOption(renderer, audioLabel, AudioOptionIndex, -30);
-                    DrawOption(renderer, "Delete Save", DeleteSaveOptionIndex, -18);
-
-                    renderer.DrawCenteredText("Up/Down nav, Space select, || leave", m_visuals.InstructionColor, 70);
+                    DrawSliderRow(renderer, "Music", m_playerData.MusicLevel, MusicSliderIndex, -25);
+                    DrawSliderRow(renderer, "SFX", m_playerData.SfxLevel, SfxSliderIndex, -9);
+                    DrawOption(renderer, "Delete Save", DeleteSaveOptionIndex, 7);
+                    DrawOption(renderer, "Back", BackOptionIndex, 23);
                 }
             }
 
             renderer.DrawTouchControls();
+        }
+
+        private void AdjustSlider(int delta)
+        {
+            if (m_selectedIndex == MusicSliderIndex)
+            {
+                int newLevel = ClampLevel(m_playerData.MusicLevel + delta);
+                if (newLevel == m_playerData.MusicLevel) return;
+                m_playerData.MusicLevel = newLevel;
+                m_audio.RefreshMusicVolume();
+                m_saveManager.Save(m_playerData);
+            }
+            else if (m_selectedIndex == SfxSliderIndex)
+            {
+                int newLevel = ClampLevel(m_playerData.SfxLevel + delta);
+                if (newLevel == m_playerData.SfxLevel) return;
+                m_playerData.SfxLevel = newLevel;
+                m_saveManager.Save(m_playerData);
+            }
+        }
+
+        private static int ClampLevel(int level)
+        {
+            if (level < 0) return 0;
+            if (level > AudioManager.MaxLevel) return AudioManager.MaxLevel;
+            return level;
+        }
+
+        private void DrawSliderRow(IGameRenderer renderer, string label, int level, int index, float yOffset)
+        {
+            bool selected = m_selectedIndex == index;
+            Color labelColor = selected ? m_visuals.HighlightColor : m_visuals.InstructionColor;
+            renderer.DrawSlider(label, level, AudioManager.MaxLevel + 1, labelColor, Color.Green, yOffset, selected);
         }
 
         private void DrawOption(IGameRenderer renderer, string label, int index, float yOffset)
@@ -137,6 +204,9 @@ namespace Snake.Core.States
             m_playerData.HighScore = 0;
             m_playerData.UpgradeTiers.Clear();
             m_playerData.AudioEnabled = true;
+            m_playerData.MusicLevel = 1;
+            m_playerData.SfxLevel = AudioManager.MaxLevel;
+            m_audio.RefreshMusicVolume();
             m_saveManager.Save(m_playerData);
         }
     }

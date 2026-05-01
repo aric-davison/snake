@@ -19,6 +19,10 @@ namespace Snake.Core.Rendering
         //   Row 2: corner_DL  corner_DR   apple       (empty)
         //   Row 3: tail_up    tail_right  tail_down   tail_left
         private const string SnakeSheet = "snake";
+        private const string GrassSheet = "grass";
+        private static readonly Rectangle SrcGrass = new Rectangle(0, 0, 16, 16);
+
+        private const string MenuTileSheet = "menu_tile";
         private static readonly Rectangle SrcHeadUp    = new Rectangle( 0,  0, 8, 8);
         private static readonly Rectangle SrcHeadRight = new Rectangle( 8,  0, 8, 8);
         private static readonly Rectangle SrcHeadDown  = new Rectangle(16,  0, 8, 8);
@@ -79,6 +83,8 @@ namespace Snake.Core.Rendering
             }
 
             TryLoadSheet(content, SnakeSheet, "Sprites/snake");
+            TryLoadSheet(content, GrassSheet, "Sprites/grass");
+            TryLoadSheet(content, MenuTileSheet, "Sprites/menu_tile");
         }
 
         private void TryLoadSheet(ContentManager content, string name, string asset)
@@ -106,7 +112,7 @@ namespace Snake.Core.Rendering
 
             // Composite the virtual canvas onto the back buffer (letterboxed, integer scale).
             m_graphicsDevice.SetRenderTarget(null);
-            m_graphicsDevice.Clear(Color.Black);
+            m_graphicsDevice.Clear(m_visuals.BackgroundColor);
             m_spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             m_spriteBatch.Draw(m_canvas, m_layout.CanvasDestRect, Color.White);
             m_spriteBatch.End();
@@ -114,6 +120,18 @@ namespace Snake.Core.Rendering
 
         public void DrawGrid(int gridWidth, int gridHeight)
         {
+            if (m_sprites.ContainsKey(GrassSheet))
+            {
+                for (int y = 0; y < gridHeight; y++)
+                {
+                    for (int x = 0; x < gridWidth; x++)
+                    {
+                        Rectangle dest = m_layout.GetCellRectangle(new Point(x, y));
+                        DrawSprite(GrassSheet, dest, SrcGrass);
+                    }
+                }
+            }
+
             Color lineColor = m_visuals.GridLineColor;
 
             for (int x = 0; x <= gridWidth; x++)
@@ -223,6 +241,15 @@ namespace Snake.Core.Rendering
             m_spriteBatch.DrawString(m_font, text, position, color);
         }
 
+        public void DrawMenuBackground()
+        {
+            if (!m_sprites.TryGetValue(MenuTileSheet, out var sheet))
+                return;
+
+            Rectangle dest = new Rectangle(0, 0, m_layout.VirtualWidth, m_layout.VirtualHeight);
+            m_spriteBatch.Draw(sheet, dest, Color.White);
+        }
+
         public void DrawMenuOption(string label, Color color, float yOffset, bool selected)
         {
             if (m_font == null) return;
@@ -239,6 +266,43 @@ namespace Snake.Core.Rendering
                 Vector2 cursorSize = m_font.MeasureString(cursor);
                 float cursorX = textX - cursorSize.X - 2;
                 m_spriteBatch.DrawString(m_font, cursor, new Vector2(cursorX, y), color);
+            }
+        }
+
+        public void DrawSlider(string label, int level, int max, Color labelColor, Color indicatorColor, float yOffset, bool selected)
+        {
+            if (m_font == null) return;
+
+            // Build "label   - - - - -" with the indicator slot already showing '('.
+            var sb = new System.Text.StringBuilder();
+            sb.Append(label);
+            sb.Append("   ");
+            for (int i = 0; i < max; i++)
+            {
+                if (i > 0) sb.Append(' ');
+                sb.Append(i == level ? '(' : '-');
+            }
+            string row = sb.ToString();
+
+            Vector2 rowSize = m_font.MeasureString(row);
+            float rowX = m_layout.VirtualWidth / 2 - rowSize.X / 2;
+            float y = m_layout.VirtualHeight / 2 + yOffset;
+
+            // Pass 1: full row in labelColor.
+            m_spriteBatch.DrawString(m_font, row, new Vector2(rowX, y), labelColor);
+
+            // Pass 2: overdraw the indicator '(' in indicatorColor at its slot position.
+            int indicatorCharIndex = label.Length + 3 + (level * 2);
+            string prefix = row.Substring(0, indicatorCharIndex);
+            float indicatorX = rowX + m_font.MeasureString(prefix).X;
+            m_spriteBatch.DrawString(m_font, "(", new Vector2(indicatorX, y), indicatorColor);
+
+            if (selected)
+            {
+                const string cursor = "(";
+                Vector2 cursorSize = m_font.MeasureString(cursor);
+                float cursorX = rowX - cursorSize.X - 2;
+                m_spriteBatch.DrawString(m_font, cursor, new Vector2(cursorX, y), labelColor);
             }
         }
 

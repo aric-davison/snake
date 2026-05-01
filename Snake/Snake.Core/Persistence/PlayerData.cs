@@ -14,6 +14,10 @@ namespace Snake.Core.Persistence
 
         public bool AudioEnabled { get; set; } = true;
 
+        public int MusicLevel { get; set; } = 1;
+
+        public int SfxLevel { get; set; } = 4;
+
         public Dictionary<string, int> UpgradeTiers { get; set; } = new Dictionary<string, int>();
 
         public int GetUpgradeTier(string upgradeId)

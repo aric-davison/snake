@@ -74,6 +74,18 @@ namespace Snake.Core.Rendering
         void DrawMenuOption(string label, Color color, float yOffset, bool selected);
 
         /// <summary>
+        /// Draws a horizontal level slider as: "label   - - - - -" with the dash at index
+        /// `level` overdrawn by "(" in indicatorColor. When selected, a "(" cursor is drawn
+        /// to the left of the row.
+        /// </summary>
+        void DrawSlider(string label, int level, int max, Color labelColor, Color indicatorColor, float yOffset, bool selected);
+
+        /// <summary>
+        /// Tiles the menu_tile sprite across the entire virtual canvas as the menu background.
+        /// </summary>
+        void DrawMenuBackground();
+
+        /// <summary>
         /// Draws the action button with a label.
         /// </summary>
         void DrawActionButton(string label);

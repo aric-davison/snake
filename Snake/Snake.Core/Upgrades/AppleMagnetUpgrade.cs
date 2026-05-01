@@ -5,6 +5,7 @@ namespace Snake.Core.Upgrades
     public class AppleMagnetUpgrade : IUpgrade
     {
         public string Name => "Apple Magnet";
+        public string DisplayName => "Magnet";
         public string Description => "Apples are drawn toward the snake from a wider range.";
         public int CurrentTier { get; set; }
         public int MaxTier => 3;
