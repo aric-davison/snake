@@ -37,7 +37,7 @@ namespace Snake.Core.Configuration
         // Virtual canvas settings (cell-space)
         public int VirtualWidth { get; set; } = 256;
         public int VirtualHeight { get; set; } = 180;
-        public int CellSize { get; set; } = 8;
+        public int CellSize { get; set; } = 16;
         public int HudHeight { get; set; } = 16;
         public int CellPadding { get; set; } = 0;
 

@@ -18,12 +18,12 @@ namespace Snake.Core.Configuration
         /// <summary>
         /// Width of the game grid in cells.
         /// </summary>
-        public int GridWidth { get; set; } = 30;
+        public int GridWidth { get; set; } = 15;
 
         /// <summary>
         /// Height of the game grid in cells.
         /// </summary>
-        public int GridHeight { get; set; } = 20;
+        public int GridHeight { get; set; } = 10;
 
         /// <summary>
         /// Initial length of the snake (including head).

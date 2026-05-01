@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+using Snake.Core.Configuration;
 
 namespace Snake.Core
 {
@@ -8,36 +8,14 @@ namespace Snake.Core
     /// </summary>
     public class GameBoard
     {
-        #region Constants
+        private readonly GameConfig m_config;
 
-        /// <summary>
-        /// The width of the game grid in cells.
-        /// </summary>
-        public const int GRID_WIDTH = 30;
+        public int GridWidth => m_config.GridWidth;
+        public int GridHeight => m_config.GridHeight;
 
-        /// <summary>
-        /// The height of the game grid in cells.
-        /// </summary>
-        public const int GRID_HEIGHT = 20;
-
-        /// <summary>
-        /// The size of each cell in pixels.
-        /// </summary>
-        public const int CELL_SIZE = 25;
-
-        #endregion
-
-        #region Constructor
-
-        /// <summary>
-        /// Initializes a new instance of the GameBoard class.
-        /// </summary>
-        public GameBoard()
+        public GameBoard(GameConfig config)
         {
-            // Currently the game board is static, but this class could be extended
-            // to support different board sizes, obstacles, etc.
+            m_config = config;
         }
-
-        #endregion
     }
 }

@@ -84,8 +84,8 @@ namespace Snake.Core
         /// <returns>A random position on the game board.</returns>
         private Point GenerateRandomPosition(GameBoard gameBoard)
         {
-            int x = m_random.Next(0, GameBoard.GRID_WIDTH);
-            int y = m_random.Next(0, GameBoard.GRID_HEIGHT);
+            int x = m_random.Next(0, gameBoard.GridWidth);
+            int y = m_random.Next(0, gameBoard.GridHeight);
             return new Point(x, y);
         }
 

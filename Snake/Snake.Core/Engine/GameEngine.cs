@@ -49,7 +49,7 @@ namespace Snake.Core.Engine
         public GameEngine(GameConfig config)
         {
             m_config = config;
-            m_board = new GameBoard();
+            m_board = new GameBoard(config);
             m_events = new GameEvents();
 
             // Initialize with empty data; SnakeGame will call Reset(PlayerData) before play.
