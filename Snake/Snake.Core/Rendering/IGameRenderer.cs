@@ -101,7 +101,7 @@ namespace Snake.Core.Rendering
 
         /// <summary>
         /// Draws small-font text with its top-left at (x, y). When mirror is true the text
-        /// is drawn with horizontal flip — used for repurposing arrow glyphs as their
+        /// is drawn with horizontal flip - used for repurposing arrow glyphs as their
         /// opposite direction.
         /// </summary>
         void DrawSmallTextAt(string text, int x, int y, Color color, bool mirror);

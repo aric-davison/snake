@@ -15,7 +15,7 @@ namespace Snake.Core.States
     public class SlotsState : IGameStateHandler, IOriginAware
     {
         // ============================================================
-        // LAYOUT TWEAK ZONE — adjust these to position the slot machine.
+        // LAYOUT TWEAK ZONE - adjust these to position the slot machine.
         // Virtual canvas is 256 wide x 180 tall. Origin (0,0) is top-left.
         // ============================================================
 
@@ -71,13 +71,13 @@ namespace Snake.Core.States
         private const int TrimCapDestHeight = 48;        // output px per cap (2x source 24)
         private const int TrimMiddleTileDestHeight = 32; // output px per tiled middle band (2x source 16)
 
-        // Top row labels (Apples, Win) — two columns above the window, pulled inward
+        // Top row labels (Apples, Win) - two columns above the window, pulled inward
         // toward center for a tighter centered grouping.
         private const int TopRowY = 18;
         private const int TopCol1X = 84;
         private const int TopCol2X = 172;
 
-        // Bottom row buttons (Spin, Bet+, Bet-, Back) — four columns below the window. Gap = 48.
+        // Bottom row buttons (Spin, Bet+, Bet-, Back) - four columns below the window. Gap = 48.
         private const int BottomRowY = 154;
         private const int BotCol1X = 56;
         private const int BotCol2X = 104;
@@ -92,7 +92,7 @@ namespace Snake.Core.States
         // Increase if the flipped '~' glyph visually bleeds into the "B".
         private const int BetArrowGap = 4;
 
-        // Help button "?" — top-right corner, navigable from the bottom row via Up/W.
+        // Help button "?" - top-right corner, navigable from the bottom row via Up/W.
         private const int HelpButtonX = 216;
         private const int HelpButtonY = 18;
 
@@ -102,10 +102,10 @@ namespace Snake.Core.States
 
         private const int ButtonCount = 5;
         private const int SpinIndex = 0;
-        private const int BetDownIndex = 1;  // Left bet button — "<- Bet"
-        private const int BetUpIndex = 2;    // Right bet button — "Bet ->"
+        private const int BetDownIndex = 1;  // Left bet button - "<- Bet"
+        private const int BetUpIndex = 2;    // Right bet button - "Bet ->"
         private const int BackIndex = 3;
-        private const int HelpIndex = 4;     // Top "?" button — opens paytable overlay
+        private const int HelpIndex = 4;     // Top "?" button - opens paytable overlay
 
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
@@ -168,7 +168,7 @@ namespace Snake.Core.States
         private float m_actionHeldTime;
         private float m_betRepeatTimer;
 
-        // Tracks active state across frames to detect "all reels just stopped" — that's the
+        // Tracks active state across frames to detect "all reels just stopped" - that's the
         // moment we evaluate the payout.
         private bool m_anyReelActiveLastFrame;
 
@@ -302,7 +302,7 @@ namespace Snake.Core.States
             }
             else
             {
-                // Reels are spinning — clear hold state so a fresh hold is required afterward.
+                // Reels are spinning - clear hold state so a fresh hold is required afterward.
                 m_actionHeldTime = 0f;
                 m_betRepeatTimer = 0f;
             }
@@ -317,7 +317,7 @@ namespace Snake.Core.States
                 UpdateReel(i, dt);
             }
 
-            // Detect the frame where the last reel transitioned from active → idle so we
+            // Detect the frame where the last reel transitioned from active to idle so we
             // evaluate the payout exactly once per spin.
             bool anyActiveNow = AnyReelActive();
             if (m_anyReelActiveLastFrame && !anyActiveNow)
@@ -503,7 +503,7 @@ namespace Snake.Core.States
 
         public void Draw(IGameRenderer renderer)
         {
-            // Layer 1: outer cabinet — 9-slice composed from the 3x3 source.
+            // Layer 1: outer cabinet - 9-slice composed from the 3x3 source.
             renderer.DrawNineSlice(
                 GameRenderer.SlotsCabinet,
                 new Rectangle(CabinetX, CabinetY, CabinetWidth, CabinetHeight),
@@ -528,7 +528,7 @@ namespace Snake.Core.States
                 trimTopSrc, trimMiddleSrc, trimBottomSrc,
                 TrimCapDestHeight, TrimMiddleTileDestHeight);
 
-            // Layer 3: slots window — single 24x24 image stretched to fill the window rect.
+            // Layer 3: slots window - single 24x24 image stretched to fill the window rect.
             renderer.DrawSprite(
                 GameRenderer.SlotsWindow,
                 new Rectangle(WindowX, WindowY, WindowWidth, WindowHeight),

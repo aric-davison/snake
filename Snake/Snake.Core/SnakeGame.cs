@@ -85,7 +85,7 @@ namespace Snake.Core
             RecalculateLayout();
             Window.ClientSizeChanged += (_, _) => RecalculateLayout();
 
-            // Load persistent player data (P1 in SDD §3)
+            // Load persistent player data (P1 in SDD section 3)
             m_saveManager = new SaveManager();
             m_playerData = m_saveManager.Load();
 

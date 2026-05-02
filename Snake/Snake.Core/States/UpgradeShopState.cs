@@ -88,7 +88,7 @@ namespace Snake.Core.States
                 upgrade.Apply(m_playerData);
 
                 // If the tier moved, the purchase succeeded. Persist immediately
-                // (SDD §3 P6: save triggers on upgrade purchase).
+                // (SDD section 3 P6: save triggers on upgrade purchase).
                 if (upgrade.CurrentTier > beforeTier)
                 {
                     m_saveManager.Save(m_playerData);

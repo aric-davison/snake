@@ -14,7 +14,7 @@ namespace Snake.Core.Rendering
     /// </summary>
     public class GameRenderer : IGameRenderer
     {
-        // Snake sheet (Sprites/snake.png) — 32x32, 8x8 tiles in a 4x4 grid:
+        // Snake sheet (Sprites/snake.png) - 32x32, 8x8 tiles in a 4x4 grid:
         //   Row 0: head_up    head_right  head_down   head_left
         //   Row 1: body_horiz body_vert   corner_UL   corner_UR
         //   Row 2: corner_DL  corner_DR   apple       golden_apple
