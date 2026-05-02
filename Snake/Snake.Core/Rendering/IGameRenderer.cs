@@ -61,10 +61,35 @@ namespace Snake.Core.Rendering
         /// </summary>
         void DrawOverlay(Color color);
 
+        /// <summary>Draws a solid filled rectangle. Used for tuning layouts and masking.</summary>
+        void DrawFilledRect(Rectangle rect, Color color);
+
         /// <summary>
         /// Draws centered text at the specified vertical offset from center.
         /// </summary>
         void DrawCenteredText(string text, Color color, float yOffset);
+
+        /// <summary>
+        /// Draws text horizontally centered on the given centerX, with its top edge at y.
+        /// Used for laying out rows of labels/buttons at fixed x positions.
+        /// </summary>
+        void DrawTextCenteredAt(string text, int centerX, int y, Color color);
+
+        /// <summary>
+        /// Same as DrawTextCenteredAt but uses the small (HudSmall) font. Falls back to the
+        /// main font if the small font failed to load.
+        /// </summary>
+        void DrawSmallTextCenteredAt(string text, int centerX, int y, Color color);
+
+        /// <summary>
+        /// Draws small-font text with its top-left at (x, y). When mirror is true the text
+        /// is drawn with horizontal flip — used for repurposing arrow glyphs as their
+        /// opposite direction.
+        /// </summary>
+        void DrawSmallTextAt(string text, int x, int y, Color color, bool mirror);
+
+        /// <summary>Returns the rendered size of text in the small font.</summary>
+        Vector2 MeasureSmallText(string text);
 
         /// <summary>
         /// Draws a centered menu option label. The label position does not change between
@@ -84,6 +109,42 @@ namespace Snake.Core.Rendering
         /// Tiles the menu_tile sprite across the entire virtual canvas as the menu background.
         /// </summary>
         void DrawMenuBackground();
+
+        /// <summary>
+        /// Tiles a sprite sheet (assumed to be a single tileWidth x tileHeight tile) across
+        /// the given region. Edges are clipped to fit. Used for slot machine background fill.
+        /// </summary>
+        void DrawTiledRegion(string sheetName, Rectangle region, int tileWidth, int tileHeight);
+
+        /// <summary>
+        /// Composes a 9-slice frame from a 3x3 grid of tileSize x tileSize tiles in the
+        /// source sheet (TL TM TR / ML MM MR / BL BM BR). Corners are drawn once; edges
+        /// and the middle are tiled to fill the destination rect. dest.Width and dest.Height
+        /// should each be at least 2*tileSize; sizes that aren't multiples of tileSize are
+        /// handled via clipped tiles on the trailing edge.
+        /// </summary>
+        void DrawNineSlice(string sheetName, Rectangle dest, int tileSize);
+
+        /// <summary>
+        /// Composes a vertical three-slice (top cap / tiled middle / bottom cap) from the
+        /// given source rects on a sheet, into the destination rect. Top and bottom caps
+        /// are stretched horizontally to dest.Width and given capDestHeight. The middle
+        /// source rect is tiled in middleTileDestHeight chunks to fill the gap between caps.
+        /// </summary>
+        void DrawVerticalThreeSlice(
+            string sheetName,
+            Rectangle dest,
+            Rectangle topSrc,
+            Rectangle middleSrc,
+            Rectangle bottomSrc,
+            int capDestHeight,
+            int middleTileDestHeight);
+
+        /// <summary>Width of the virtual canvas in pixels.</summary>
+        int VirtualWidth { get; }
+
+        /// <summary>Height of the virtual canvas in pixels.</summary>
+        int VirtualHeight { get; }
 
         /// <summary>
         /// Draws the action button with a label.

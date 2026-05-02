@@ -23,6 +23,10 @@ namespace Snake.Core.Rendering
         private static readonly Rectangle SrcGrass = new Rectangle(0, 0, 16, 16);
 
         private const string MenuTileSheet = "menu_tile";
+        private const string SlotsCabinetSheet = "slots_cabinet";
+        private const string SlotsTrimSheet = "slots_trim";
+        private const string SlotsWindowSheet = "slots_window";
+        private const string SlotsSymbolsSheet = "slots_symbols";
         private static readonly Rectangle SrcHeadUp    = new Rectangle( 0,  0, 8, 8);
         private static readonly Rectangle SrcHeadRight = new Rectangle( 8,  0, 8, 8);
         private static readonly Rectangle SrcHeadDown  = new Rectangle(16,  0, 8, 8);
@@ -47,6 +51,7 @@ namespace Snake.Core.Rendering
         private SpriteBatch m_spriteBatch;
         private Texture2D m_pixelTexture;
         private SpriteFont m_font;
+        private SpriteFont m_smallFont;
         private RenderTarget2D m_canvas;
 
         public bool HasFont => m_font != null;
@@ -82,10 +87,28 @@ namespace Snake.Core.Rendering
                 m_font = null;
             }
 
+            try
+            {
+                m_smallFont = content.Load<SpriteFont>("Fonts/HudSmall");
+            }
+            catch
+            {
+                m_smallFont = null;
+            }
+
             TryLoadSheet(content, SnakeSheet, "Sprites/snake");
             TryLoadSheet(content, GrassSheet, "Sprites/grass");
             TryLoadSheet(content, MenuTileSheet, "Sprites/menu_tile");
+            TryLoadSheet(content, SlotsCabinetSheet, "Sprites/slots_outer_cabinet");
+            TryLoadSheet(content, SlotsTrimSheet, "Sprites/slots_cabinet_trim");
+            TryLoadSheet(content, SlotsWindowSheet, "Sprites/slots_window");
+            TryLoadSheet(content, SlotsSymbolsSheet, "Sprites/slots_symbols");
         }
+
+        public const string SlotsCabinet = SlotsCabinetSheet;
+        public const string SlotsTrim = SlotsTrimSheet;
+        public const string SlotsWindow = SlotsWindowSheet;
+        public const string SlotsSymbols = SlotsSymbolsSheet;
 
         private void TryLoadSheet(ContentManager content, string name, string asset)
         {
@@ -229,6 +252,11 @@ namespace Snake.Core.Rendering
             m_spriteBatch.Draw(m_pixelTexture, overlay, color);
         }
 
+        public void DrawFilledRect(Rectangle rect, Color color)
+        {
+            m_spriteBatch.Draw(m_pixelTexture, rect, color);
+        }
+
         public void DrawCenteredText(string text, Color color, float yOffset)
         {
             if (m_font == null) return;
@@ -248,6 +276,170 @@ namespace Snake.Core.Rendering
 
             Rectangle dest = new Rectangle(0, 0, m_layout.VirtualWidth, m_layout.VirtualHeight);
             m_spriteBatch.Draw(sheet, dest, Color.White);
+        }
+
+        public void DrawTiledRegion(string sheetName, Rectangle region, int tileWidth, int tileHeight)
+        {
+            if (!m_sprites.TryGetValue(sheetName, out var sheet))
+                return;
+
+            for (int y = region.Y; y < region.Y + region.Height; y += tileHeight)
+            {
+                for (int x = region.X; x < region.X + region.Width; x += tileWidth)
+                {
+                    int w = System.Math.Min(tileWidth, region.X + region.Width - x);
+                    int h = System.Math.Min(tileHeight, region.Y + region.Height - y);
+                    Rectangle dest = new Rectangle(x, y, w, h);
+                    Rectangle src = new Rectangle(0, 0, w, h);
+                    m_spriteBatch.Draw(sheet, dest, src, Color.White);
+                }
+            }
+        }
+
+        public int VirtualWidth => m_layout.VirtualWidth;
+        public int VirtualHeight => m_layout.VirtualHeight;
+
+        public void DrawNineSlice(string sheetName, Rectangle dest, int tileSize)
+        {
+            if (!m_sprites.TryGetValue(sheetName, out var sheet))
+                return;
+
+            int t = tileSize;
+            int innerX = dest.X + t;
+            int innerY = dest.Y + t;
+            int innerWidth = dest.Width - 2 * t;
+            int innerHeight = dest.Height - 2 * t;
+            int rightX = dest.Right - t;
+            int bottomY = dest.Bottom - t;
+
+            // Source tiles in the 3x3 sheet.
+            Rectangle srcTL = new Rectangle(0,     0,     t, t);
+            Rectangle srcTM = new Rectangle(t,     0,     t, t);
+            Rectangle srcTR = new Rectangle(2 * t, 0,     t, t);
+            Rectangle srcML = new Rectangle(0,     t,     t, t);
+            Rectangle srcMM = new Rectangle(t,     t,     t, t);
+            Rectangle srcMR = new Rectangle(2 * t, t,     t, t);
+            Rectangle srcBL = new Rectangle(0,     2 * t, t, t);
+            Rectangle srcBM = new Rectangle(t,     2 * t, t, t);
+            Rectangle srcBR = new Rectangle(2 * t, 2 * t, t, t);
+
+            // Corners.
+            m_spriteBatch.Draw(sheet, new Rectangle(dest.X,  dest.Y,  t, t), srcTL, Color.White);
+            m_spriteBatch.Draw(sheet, new Rectangle(rightX,  dest.Y,  t, t), srcTR, Color.White);
+            m_spriteBatch.Draw(sheet, new Rectangle(dest.X,  bottomY, t, t), srcBL, Color.White);
+            m_spriteBatch.Draw(sheet, new Rectangle(rightX,  bottomY, t, t), srcBR, Color.White);
+
+            // Top + bottom edges (tile horizontally, clip last tile if needed).
+            for (int x = innerX; x < innerX + innerWidth; x += t)
+            {
+                int w = System.Math.Min(t, innerX + innerWidth - x);
+                Rectangle topDest = new Rectangle(x, dest.Y, w, t);
+                Rectangle botDest = new Rectangle(x, bottomY, w, t);
+                Rectangle topSrc = new Rectangle(srcTM.X, srcTM.Y, w, t);
+                Rectangle botSrc = new Rectangle(srcBM.X, srcBM.Y, w, t);
+                m_spriteBatch.Draw(sheet, topDest, topSrc, Color.White);
+                m_spriteBatch.Draw(sheet, botDest, botSrc, Color.White);
+            }
+
+            // Left + right edges (tile vertically, clip last tile if needed).
+            for (int y = innerY; y < innerY + innerHeight; y += t)
+            {
+                int h = System.Math.Min(t, innerY + innerHeight - y);
+                Rectangle leftDest  = new Rectangle(dest.X, y, t, h);
+                Rectangle rightDest = new Rectangle(rightX, y, t, h);
+                Rectangle leftSrc  = new Rectangle(srcML.X, srcML.Y, t, h);
+                Rectangle rightSrc = new Rectangle(srcMR.X, srcMR.Y, t, h);
+                m_spriteBatch.Draw(sheet, leftDest,  leftSrc,  Color.White);
+                m_spriteBatch.Draw(sheet, rightDest, rightSrc, Color.White);
+            }
+
+            // Middle (tile both ways).
+            for (int y = innerY; y < innerY + innerHeight; y += t)
+            {
+                int h = System.Math.Min(t, innerY + innerHeight - y);
+                for (int x = innerX; x < innerX + innerWidth; x += t)
+                {
+                    int w = System.Math.Min(t, innerX + innerWidth - x);
+                    Rectangle midDest = new Rectangle(x, y, w, h);
+                    Rectangle midSrc  = new Rectangle(srcMM.X, srcMM.Y, w, h);
+                    m_spriteBatch.Draw(sheet, midDest, midSrc, Color.White);
+                }
+            }
+        }
+
+        public void DrawVerticalThreeSlice(
+            string sheetName,
+            Rectangle dest,
+            Rectangle topSrc,
+            Rectangle middleSrc,
+            Rectangle bottomSrc,
+            int capDestHeight,
+            int middleTileDestHeight)
+        {
+            if (!m_sprites.TryGetValue(sheetName, out var sheet))
+                return;
+
+            // Top cap.
+            m_spriteBatch.Draw(
+                sheet,
+                new Rectangle(dest.X, dest.Y, dest.Width, capDestHeight),
+                topSrc, Color.White);
+
+            // Bottom cap.
+            m_spriteBatch.Draw(
+                sheet,
+                new Rectangle(dest.X, dest.Bottom - capDestHeight, dest.Width, capDestHeight),
+                bottomSrc, Color.White);
+
+            // Tiled middle: stack copies of middleSrc between the caps. Last tile is
+            // height-clipped (with proportional source clip) if the gap isn't a clean multiple.
+            int innerY = dest.Y + capDestHeight;
+            int innerEndY = dest.Bottom - capDestHeight;
+            for (int y = innerY; y < innerEndY; y += middleTileDestHeight)
+            {
+                int h = System.Math.Min(middleTileDestHeight, innerEndY - y);
+                int srcH = h == middleTileDestHeight
+                    ? middleSrc.Height
+                    : System.Math.Max(1, (int)((float)h / middleTileDestHeight * middleSrc.Height));
+                m_spriteBatch.Draw(
+                    sheet,
+                    new Rectangle(dest.X, y, dest.Width, h),
+                    new Rectangle(middleSrc.X, middleSrc.Y, middleSrc.Width, srcH),
+                    Color.White);
+            }
+        }
+
+        public void DrawTextCenteredAt(string text, int centerX, int y, Color color)
+        {
+            if (m_font == null) return;
+            Vector2 size = m_font.MeasureString(text);
+            Vector2 pos = new Vector2(centerX - size.X / 2, y);
+            m_spriteBatch.DrawString(m_font, text, pos, color);
+        }
+
+        public void DrawSmallTextCenteredAt(string text, int centerX, int y, Color color)
+        {
+            SpriteFont font = m_smallFont ?? m_font;
+            if (font == null) return;
+            Vector2 size = font.MeasureString(text);
+            Vector2 pos = new Vector2(centerX - size.X / 2, y);
+            m_spriteBatch.DrawString(font, text, pos, color);
+        }
+
+        public void DrawSmallTextAt(string text, int x, int y, Color color, bool mirror)
+        {
+            SpriteFont font = m_smallFont ?? m_font;
+            if (font == null) return;
+            SpriteEffects effects = mirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+            m_spriteBatch.DrawString(
+                font, text, new Vector2(x, y), color,
+                0f, Vector2.Zero, 1f, effects, 0f);
+        }
+
+        public Vector2 MeasureSmallText(string text)
+        {
+            SpriteFont font = m_smallFont ?? m_font;
+            return font == null ? Vector2.Zero : font.MeasureString(text);
         }
 
         public void DrawMenuOption(string label, Color color, float yOffset, bool selected)

@@ -95,6 +95,12 @@ namespace Snake.Core.Input
             {
                 m_currentState.ActionPressed = true;
             }
+
+            // Action held (level-triggered, used for hold-to-repeat on bet buttons).
+            if (keyState.IsKeyDown(Keys.Space) || keyState.IsKeyDown(Keys.Enter))
+            {
+                m_currentState.ActionHeld = true;
+            }
         }
 
         private void ProcessTouchInput(TouchCollection touchState)

@@ -27,6 +27,11 @@ namespace Snake.Core.Input
         public bool ActionPressed { get; set; }
 
         /// <summary>
+        /// True while the action button is currently held (level-triggered, for hold-to-repeat).
+        /// </summary>
+        public bool ActionHeld { get; set; }
+
+        /// <summary>
         /// True if any input was pressed (for starting game).
         /// </summary>
         public bool AnyInputPressed { get; set; }
@@ -45,6 +50,7 @@ namespace Snake.Core.Input
             DirectionPressed = null;
             PausePressed = false;
             ActionPressed = false;
+            ActionHeld = false;
             AnyInputPressed = false;
             ExitRequested = false;
         }
