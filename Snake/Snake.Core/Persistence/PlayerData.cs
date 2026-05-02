@@ -20,6 +20,8 @@ namespace Snake.Core.Persistence
 
         public Dictionary<string, int> UpgradeTiers { get; set; } = new Dictionary<string, int>();
 
+        public bool HasSeenPaytable { get; set; }
+
         public int GetUpgradeTier(string upgradeId)
         {
             return UpgradeTiers.TryGetValue(upgradeId, out var tier) ? tier : 0;

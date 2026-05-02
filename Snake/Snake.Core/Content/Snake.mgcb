@@ -104,6 +104,12 @@
 /processorParam:TextureFormat=Color
 /build:Sprites/slots_symbols.png
 
+#begin Audio/menu_screen.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Audio/menu_screen.ogg
+
 #begin Audio/pixel_loop01.ogg
 /importer:OggImporter
 /processor:SongProcessor
@@ -127,3 +133,27 @@
 /processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:Audio/apple_crunch.ogg
+
+#begin Audio/slots_menu.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Audio/slots_menu.ogg
+
+#begin Audio/reel_spin.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/reel_spin.ogg
+
+#begin Audio/reel_stop.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/reel_stop.ogg
+
+#begin Audio/jackpot.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/jackpot.ogg

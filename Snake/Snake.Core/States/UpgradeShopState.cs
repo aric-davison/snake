@@ -135,7 +135,7 @@ namespace Snake.Core.States
                 if (m_selectedIndex < m_upgrades.Length)
                 {
                     var selectedUpgrade = m_upgrades[m_selectedIndex];
-                    renderer.DrawCenteredText(selectedUpgrade.Description, m_visuals.InstructionColor, 30);
+                    renderer.DrawCenteredMultilineText(selectedUpgrade.Description, m_visuals.InstructionColor, 30);
                 }
             }
 

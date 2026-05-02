@@ -98,9 +98,9 @@ namespace Snake.Core
 
             var upgrades = new IUpgrade[]
             {
-                new SpeedUpgrade(),
                 new AppleValueUpgrade(),
-                new AppleMagnetUpgrade()
+                new FortuneUpgrade(),
+                new FrenzyUpgrade()
             };
 
             // Create state handlers
@@ -112,7 +112,7 @@ namespace Snake.Core
                 { GameState.GameOver, new GameOverState(m_engine, m_gameConfig, m_visualConfig, m_playerData, m_audioManager) },
                 { GameState.Settings, new SettingsState(m_gameConfig, m_visualConfig, m_playerData, m_saveManager, m_audioManager) },
                 { GameState.UpgradeShop, new UpgradeShopState(m_gameConfig, m_visualConfig, m_playerData, upgrades, m_saveManager) },
-                { GameState.Slots, new SlotsState(m_gameConfig, m_visualConfig, m_playerData, m_saveManager) }
+                { GameState.Slots, new SlotsState(m_gameConfig, m_visualConfig, m_playerData, m_saveManager, m_audioManager) }
             };
 
             m_currentState = m_states[GameState.Menu];

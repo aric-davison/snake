@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
@@ -16,7 +17,7 @@ namespace Snake.Core.Rendering
         // Snake sheet (Sprites/snake.png) — 32x32, 8x8 tiles in a 4x4 grid:
         //   Row 0: head_up    head_right  head_down   head_left
         //   Row 1: body_horiz body_vert   corner_UL   corner_UR
-        //   Row 2: corner_DL  corner_DR   apple       (empty)
+        //   Row 2: corner_DL  corner_DR   apple       golden_apple
         //   Row 3: tail_up    tail_right  tail_down   tail_left
         private const string SnakeSheet = "snake";
         private const string GrassSheet = "grass";
@@ -37,7 +38,8 @@ namespace Snake.Core.Rendering
         private static readonly Rectangle SrcCornerUR  = new Rectangle(24,  8, 8, 8);
         private static readonly Rectangle SrcCornerDL  = new Rectangle( 0, 16, 8, 8);
         private static readonly Rectangle SrcCornerDR  = new Rectangle( 8, 16, 8, 8);
-        private static readonly Rectangle SrcApple     = new Rectangle(16, 16, 8, 8);
+        private static readonly Rectangle SrcApple        = new Rectangle(16, 16, 8, 8);
+        private static readonly Rectangle SrcGoldenApple  = new Rectangle(24, 16, 8, 8);
         private static readonly Rectangle SrcTailUp    = new Rectangle( 0, 24, 8, 8);
         private static readonly Rectangle SrcTailRight = new Rectangle( 8, 24, 8, 8);
         private static readonly Rectangle SrcTailDown  = new Rectangle(16, 24, 8, 8);
@@ -213,14 +215,42 @@ namespace Snake.Core.Rendering
             DrawSprite(SnakeSheet, dest, SrcApple);
         }
 
+        public void DrawAppleAt(Point position, Color tint)
+        {
+            if (!m_sprites.TryGetValue(SnakeSheet, out var sheet))
+            {
+                DrawCell(position, tint);
+                return;
+            }
+
+            Rectangle dest = m_layout.GetCellRectangle(position);
+            m_spriteBatch.Draw(sheet, dest, SrcApple, tint);
+        }
+
+        public void DrawGoldenAppleAt(Point position)
+        {
+            if (!m_sprites.TryGetValue(SnakeSheet, out var sheet))
+            {
+                DrawCell(position, Color.Gold);
+                return;
+            }
+
+            Rectangle dest = m_layout.GetCellRectangle(position);
+            m_spriteBatch.Draw(sheet, dest, SrcGoldenApple, Color.White);
+        }
+
         public void DrawApples(int sessionApples, int totalBalance)
         {
             if (m_font == null) return;
 
+            // Center the text, but pin the left edge to a min margin so wide values can't
+            // clip the leading "A" off the canvas. Right side may trail off-screen instead.
+            const float MinLeftMargin = 4f;
             string text = $"Apples: {sessionApples}    Total: {totalBalance}";
             Vector2 textSize = m_font.MeasureString(text);
+            float centeredX = m_layout.VirtualWidth / 2f - textSize.X / 2f;
             Vector2 position = new Vector2(
-                m_layout.VirtualWidth / 2 - textSize.X / 2,
+                Math.Max(centeredX, MinLeftMargin),
                 (m_layout.HudHeight - textSize.Y) / 2);
 
             m_spriteBatch.DrawString(m_font, text, position, m_visuals.ScoreColor);
@@ -267,6 +297,23 @@ namespace Snake.Core.Rendering
                 m_layout.VirtualHeight / 2 + yOffset);
 
             m_spriteBatch.DrawString(m_font, text, position, color);
+        }
+
+        public void DrawCenteredMultilineText(string text, Color color, float yOffset)
+        {
+            if (m_font == null) return;
+
+            string[] lines = text.Split('\n');
+            float lineHeight = m_font.LineSpacing;
+            float startY = m_layout.VirtualHeight / 2f + yOffset;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                Vector2 size = m_font.MeasureString(lines[i]);
+                float x = m_layout.VirtualWidth / 2f - size.X / 2f;
+                float y = startY + i * lineHeight;
+                m_spriteBatch.DrawString(m_font, lines[i], new Vector2(x, y), color);
+            }
         }
 
         public void DrawMenuBackground()

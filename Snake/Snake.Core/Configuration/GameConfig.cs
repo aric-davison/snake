@@ -8,7 +8,7 @@ namespace Snake.Core.Configuration
         /// <summary>
         /// Seconds between snake movement updates.
         /// </summary>
-        public double UpdateInterval { get; set; } = 0.13;
+        public double UpdateInterval { get; set; } = 0.17;
 
         /// <summary>
         /// Apples awarded per food eaten (before Apple Value upgrade tier bonus).

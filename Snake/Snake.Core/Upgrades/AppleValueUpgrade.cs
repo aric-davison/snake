@@ -6,7 +6,7 @@ namespace Snake.Core.Upgrades
     {
         public string Name => "Apple Value";
         public string DisplayName => "Value";
-        public string Description => "Each apple is worth more.";
+        public string Description => "Each apple\nyields more\napples.";
         public int CurrentTier { get; set; }
         public int MaxTier => 5;
 

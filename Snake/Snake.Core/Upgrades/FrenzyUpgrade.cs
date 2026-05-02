@@ -2,15 +2,15 @@ using Snake.Core.Persistence;
 
 namespace Snake.Core.Upgrades
 {
-    public class SpeedUpgrade : IUpgrade
+    public class FrenzyUpgrade : IUpgrade
     {
-        public string Name => "Speed";
-        public string DisplayName => "Speed";
-        public string Description => "Snake moves faster.";
+        public string Name => "Frenzy";
+        public string DisplayName => "Frenzy";
+        public string Description => "Chance for a\ngolden apple\nto appear.";
         public int CurrentTier { get; set; }
         public int MaxTier => 5;
 
-        public int GetCost(int tier) => 10 * (tier + 1);
+        public int GetCost(int tier) => 30 * (tier + 1);
 
         public void Apply(PlayerData data)
         {

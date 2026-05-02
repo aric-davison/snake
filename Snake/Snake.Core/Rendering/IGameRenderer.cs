@@ -41,6 +41,17 @@ namespace Snake.Core.Rendering
         void DrawFood(Food food);
 
         /// <summary>
+        /// Draws an apple sprite at the given grid position with a color tint. Used for
+        /// Fortune-spawned bonus apples.
+        /// </summary>
+        void DrawAppleAt(Microsoft.Xna.Framework.Point position, Microsoft.Xna.Framework.Color tint);
+
+        /// <summary>
+        /// Draws the dedicated golden apple sprite at the given grid position.
+        /// </summary>
+        void DrawGoldenAppleAt(Microsoft.Xna.Framework.Point position);
+
+        /// <summary>
         /// Draws the in-game HUD: apples earned this run and the player's persistent total.
         /// </summary>
         void DrawApples(int sessionApples, int totalBalance);
@@ -68,6 +79,13 @@ namespace Snake.Core.Rendering
         /// Draws centered text at the specified vertical offset from center.
         /// </summary>
         void DrawCenteredText(string text, Color color, float yOffset);
+
+        /// <summary>
+        /// Draws multi-line centered text. Each line (split on '\n') is centered horizontally
+        /// on its own; lines stack downward starting at yOffset. Use for descriptions that
+        /// don't fit on a single line.
+        /// </summary>
+        void DrawCenteredMultilineText(string text, Color color, float yOffset);
 
         /// <summary>
         /// Draws text horizontally centered on the given centerX, with its top edge at y.

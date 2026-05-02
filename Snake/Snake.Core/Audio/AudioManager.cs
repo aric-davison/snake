@@ -19,8 +19,16 @@ namespace Snake.Core.Audio
         private readonly Random m_random = new Random();
         private Song[] m_loopTracks;
         private Song m_gameOverSong;
+        private Song m_menuSong;
+        private Song m_slotsMenuSong;
         private SoundEffect m_appleCrunch;
+        private SoundEffect m_reelSpin;
+        private SoundEffect m_reelStop;
+        private SoundEffect m_jackpot;
+        private SoundEffectInstance m_reelSpinInstance;
         private bool m_gameOverPlayed;
+        private bool m_menuSongActive;
+        private bool m_slotsMenuSongActive;
         private bool m_loaded;
 
         public AudioManager(PlayerData playerData)
@@ -38,7 +46,14 @@ namespace Snake.Core.Audio
                     content.Load<Song>("Audio/pixel_loop02"),
                 };
                 m_gameOverSong = content.Load<Song>("Audio/game_over");
+                m_menuSong = content.Load<Song>("Audio/menu_screen");
+                m_slotsMenuSong = content.Load<Song>("Audio/slots_menu");
                 m_appleCrunch = content.Load<SoundEffect>("Audio/apple_crunch");
+                m_reelSpin = content.Load<SoundEffect>("Audio/reel_spin");
+                m_reelStop = content.Load<SoundEffect>("Audio/reel_stop");
+                m_jackpot = content.Load<SoundEffect>("Audio/jackpot");
+                m_reelSpinInstance = m_reelSpin.CreateInstance();
+                m_reelSpinInstance.IsLooped = true;
                 m_loaded = true;
             }
             catch
@@ -61,6 +76,8 @@ namespace Snake.Core.Audio
 
             // Fresh run: arm the game-over one-shot and pick a random loop track.
             m_gameOverPlayed = false;
+            m_menuSongActive = false;
+            m_slotsMenuSongActive = false;
             var track = m_loopTracks[m_random.Next(m_loopTracks.Length)];
             MediaPlayer.IsRepeating = true;
             MediaPlayer.Play(track);
@@ -81,6 +98,8 @@ namespace Snake.Core.Audio
             if (m_gameOverPlayed) return;
 
             m_gameOverPlayed = true;
+            m_menuSongActive = false;
+            m_slotsMenuSongActive = false;
             MediaPlayer.Stop();
 
             MediaPlayer.Volume = MusicVolume();
@@ -91,7 +110,69 @@ namespace Snake.Core.Audio
         public void OnMenuEnter()
         {
             if (!m_loaded) return;
+
+            // Idempotent: if we're already playing the menu song (e.g. re-entered Menu from
+            // Settings or Slots), don't restart it.
+            if (m_menuSongActive && MediaPlayer.State == MediaState.Playing) return;
+
+            m_menuSongActive = true;
+            m_slotsMenuSongActive = false;
             MediaPlayer.Stop();
+            MediaPlayer.Volume = MusicVolume();
+            MediaPlayer.IsRepeating = true;
+            MediaPlayer.Play(m_menuSong);
+        }
+
+        public void OnSlotsEnter()
+        {
+            if (!m_loaded) return;
+
+            // Idempotent (re-entering the slots state shouldn't restart the song).
+            if (m_slotsMenuSongActive && MediaPlayer.State == MediaState.Playing) return;
+
+            m_slotsMenuSongActive = true;
+            m_menuSongActive = false;
+            MediaPlayer.Stop();
+            MediaPlayer.Volume = MusicVolume();
+            MediaPlayer.IsRepeating = true;
+            MediaPlayer.Play(m_slotsMenuSong);
+        }
+
+        public void PlayReelSpin()
+        {
+            if (!m_loaded) return;
+            float vol = SfxVolume();
+            if (vol <= 0f) return;
+            m_reelSpinInstance.Volume = vol;
+            if (m_reelSpinInstance.State != SoundState.Playing)
+            {
+                m_reelSpinInstance.Play();
+            }
+        }
+
+        public void StopReelSpin()
+        {
+            if (!m_loaded) return;
+            if (m_reelSpinInstance.State != SoundState.Stopped)
+            {
+                m_reelSpinInstance.Stop();
+            }
+        }
+
+        public void PlayReelStop()
+        {
+            if (!m_loaded) return;
+            float vol = SfxVolume();
+            if (vol <= 0f) return;
+            m_reelStop.Play(vol, 0f, 0f);
+        }
+
+        public void PlayJackpot()
+        {
+            if (!m_loaded) return;
+            float vol = SfxVolume();
+            if (vol <= 0f) return;
+            m_jackpot.Play(vol, 0f, 0f);
         }
 
         public void PlayAppleCrunch()

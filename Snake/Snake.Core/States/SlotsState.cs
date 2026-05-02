@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
+using Snake.Core.Audio;
 using Snake.Core.Configuration;
 using Snake.Core.Input;
 using Snake.Core.Persistence;
@@ -91,20 +92,26 @@ namespace Snake.Core.States
         // Increase if the flipped '~' glyph visually bleeds into the "B".
         private const int BetArrowGap = 4;
 
+        // Help button "?" — top-right corner, navigable from the bottom row via Up/W.
+        private const int HelpButtonX = 216;
+        private const int HelpButtonY = 18;
+
         // ============================================================
         // END LAYOUT TWEAK ZONE
         // ============================================================
 
-        private const int ButtonCount = 4;
+        private const int ButtonCount = 5;
         private const int SpinIndex = 0;
         private const int BetDownIndex = 1;  // Left bet button — "<- Bet"
         private const int BetUpIndex = 2;    // Right bet button — "Bet ->"
         private const int BackIndex = 3;
+        private const int HelpIndex = 4;     // Top "?" button — opens paytable overlay
 
         private readonly GameConfig m_config;
         private readonly VisualConfig m_visuals;
         private readonly PlayerData m_playerData;
         private readonly SaveManager m_saveManager;
+        private readonly AudioManager m_audio;
 
         // Spin tuning.
         private const float SpinSpeedPxPerSec = 400f;
@@ -115,6 +122,11 @@ namespace Snake.Core.States
         // Hold-to-repeat tuning for bet+/- buttons.
         private const float BetRepeatInitialDelay = 0.4f;  // hold this long before auto-repeat kicks in
         private const float BetRepeatInterval = 0.08f;     // repeat rate after initial delay
+
+        // Hidden pity-timer luck meter (Pokemon-Emerald-slots style). Starts at 0 each Slots
+        // session; rises with every losing spin, resets on a win. The current value is the
+        // probability that reels 1 and 2 are forced to match reel 0's middle symbol.
+        private const float LuckLossIncrement = 0.05f;
 
         // Derived layout constants (compile-time).
         private const int VerticalPadding = ReelHeight - SymbolsPerColumn * SymbolSize;
@@ -160,14 +172,23 @@ namespace Snake.Core.States
         // moment we evaluate the payout.
         private bool m_anyReelActiveLastFrame;
 
+        // Pity-timer state.
+        private float m_luckMeter;
+        private int m_anchorSymbol;  // middle symbol of reel 0; reels 1+ may be forced to match it
+
+        // Paytable overlay state.
+        private bool m_showPaytable;
+        private int m_lastBottomButtonIndex = SpinIndex;  // remembered when jumping to "?" via Up
+
         public GameState StateType => GameState.Slots;
 
-        public SlotsState(GameConfig config, VisualConfig visuals, PlayerData playerData, SaveManager saveManager)
+        public SlotsState(GameConfig config, VisualConfig visuals, PlayerData playerData, SaveManager saveManager, AudioManager audio)
         {
             m_config = config;
             m_visuals = visuals;
             m_playerData = playerData;
             m_saveManager = saveManager;
+            m_audio = audio;
         }
 
         public void SetOrigin(GameState origin)
@@ -178,6 +199,18 @@ namespace Snake.Core.States
         public void Enter()
         {
             m_selectedButtonIndex = SpinIndex;
+            m_lastBottomButtonIndex = SpinIndex;
+            m_luckMeter = 0f;
+
+            // Auto-show the paytable on a fresh save so new players learn the payouts.
+            if (!m_playerData.HasSeenPaytable)
+            {
+                m_showPaytable = true;
+                m_playerData.HasSeenPaytable = true;
+                m_saveManager.Save(m_playerData);
+            }
+
+            m_audio.OnSlotsEnter();
         }
 
         public void Exit()
@@ -186,6 +219,16 @@ namespace Snake.Core.States
 
         public GameState? Update(GameTime gameTime, InputState input)
         {
+            // Modal paytable overlay: action or pause closes it; everything else is ignored.
+            if (m_showPaytable)
+            {
+                if (input.ActionPressed || input.PausePressed)
+                {
+                    m_showPaytable = false;
+                }
+                return null;
+            }
+
             if (input.PausePressed)
             {
                 return m_origin;
@@ -197,13 +240,24 @@ namespace Snake.Core.States
             // Input is locked while reels are spinning/stopping (except Pause, handled above).
             if (!reelsActive)
             {
-                if (input.DirectionPressed == Direction.Left)
+                // Bottom row (Spin/Bet-/Bet+/Back, indices 0..3) cycles with Left/Right.
+                // The "?" (HelpIndex=4) sits at the top, reachable via Up/W and dismissed via Down/S.
+                if (input.DirectionPressed == Direction.Left && m_selectedButtonIndex != HelpIndex)
                 {
-                    m_selectedButtonIndex = (m_selectedButtonIndex - 1 + ButtonCount) % ButtonCount;
+                    m_selectedButtonIndex = (m_selectedButtonIndex - 1 + 4) % 4;
                 }
-                else if (input.DirectionPressed == Direction.Right)
+                else if (input.DirectionPressed == Direction.Right && m_selectedButtonIndex != HelpIndex)
                 {
-                    m_selectedButtonIndex = (m_selectedButtonIndex + 1) % ButtonCount;
+                    m_selectedButtonIndex = (m_selectedButtonIndex + 1) % 4;
+                }
+                else if (input.DirectionPressed == Direction.Up && m_selectedButtonIndex != HelpIndex)
+                {
+                    m_lastBottomButtonIndex = m_selectedButtonIndex;
+                    m_selectedButtonIndex = HelpIndex;
+                }
+                else if (input.DirectionPressed == Direction.Down && m_selectedButtonIndex == HelpIndex)
+                {
+                    m_selectedButtonIndex = m_lastBottomButtonIndex;
                 }
 
                 if (input.ActionPressed)
@@ -219,6 +273,9 @@ namespace Snake.Core.States
                             break;
                         case BackIndex:
                             return m_origin;
+                        case HelpIndex:
+                            m_showPaytable = true;
+                            break;
                     }
                 }
 
@@ -301,10 +358,14 @@ namespace Snake.Core.States
                 m_reelStates[i] = ReelState.Spinning;
                 m_reelStopTimes[i] = MinSpinDurationSec + i * ReelStopStaggerSec;
             }
+
+            m_audio.PlayReelSpin();
         }
 
         private void OnAllReelsStopped()
         {
+            m_audio.StopReelSpin();
+
             // Single payline: middle row across all 3 reels. 3-of-a-kind pays multiplier * bet.
             int s0 = GetMiddleSymbol(0);
             int s1 = GetMiddleSymbol(1);
@@ -313,12 +374,43 @@ namespace Snake.Core.States
             {
                 m_win = SymbolMultipliers[s0] * m_bet;
                 m_playerData.AppleBalance += m_win;
+                m_audio.PlayJackpot();
+                m_luckMeter = 0f;
+            }
+            else
+            {
+                m_luckMeter = MathHelper.Min(1f, m_luckMeter + LuckLossIncrement);
             }
             // Bet was already deducted in StartSpin; persist either way.
             m_saveManager.Save(m_playerData);
 
             // Cap bet to remaining balance so the next spin can't overshoot.
             if (m_bet > m_playerData.AppleBalance) m_bet = Math.Max(1, m_playerData.AppleBalance);
+        }
+
+        private int PickTargetForMiddleSymbol(int reel, int desiredSymbol)
+        {
+            // Solve for a wheel index `t` such that wheel[(t+1) % len] == desiredSymbol.
+            // (At rest, the middle slot's wheel index is (t + 1) mod len.) Pick a random
+            // matching candidate so the reel doesn't always land on the same offset.
+            int[] wheel = WheelData[reel];
+            int len = wheel.Length;
+            int matchCount = 0;
+            for (int i = 0; i < len; i++)
+            {
+                if (wheel[i] == desiredSymbol) matchCount++;
+            }
+            int pick = m_random.Next(matchCount);
+            int seen = 0;
+            for (int i = 0; i < len; i++)
+            {
+                if (wheel[i] == desiredSymbol)
+                {
+                    if (seen == pick) return (i - 1 + len) % len;
+                    seen++;
+                }
+            }
+            return 0;  // fallback (every wheel contains every symbol, so this is unreachable)
         }
 
         private int GetMiddleSymbol(int reel)
@@ -356,6 +448,7 @@ namespace Snake.Core.States
                     if (progress >= 1f)
                     {
                         m_reelStates[reel] = ReelState.Idle;
+                        m_audio.PlayReelStop();
                     }
                     break;
             }
@@ -364,7 +457,25 @@ namespace Snake.Core.States
         private void BeginStopping(int reel)
         {
             int wheelLen = WheelData[reel].Length;
-            int targetIndex = m_random.Next(wheelLen);  // payout will pick this later
+
+            int targetIndex;
+            if (reel == 0)
+            {
+                // Reel 0: random target. Whatever lands in its middle slot becomes the
+                // anchor symbol that later reels may be forced to match.
+                targetIndex = m_random.Next(wheelLen);
+                int[] wheel0 = WheelData[reel];
+                m_anchorSymbol = wheel0[(targetIndex + 1) % wheelLen];
+            }
+            else if (m_random.NextDouble() < m_luckMeter)
+            {
+                // Pity hit: pick a target such that this reel's middle slot matches the anchor.
+                targetIndex = PickTargetForMiddleSymbol(reel, m_anchorSymbol);
+            }
+            else
+            {
+                targetIndex = m_random.Next(wheelLen);
+            }
 
             // Symbol with strip index k is at canvas Y = RestTopY + k*SlotHeight + offset.
             // For wheel index t to be at the top static slot we need k mod wheelLen == t,
@@ -442,12 +553,15 @@ namespace Snake.Core.States
             // continuously and decelerates onto a target index when stopping.
             DrawReelSymbols(renderer);
 
-            // Layer 4: top row labels (read-only displays).
+            // Layer 4: top row labels (read-only displays) + the "?" help button.
             if (renderer.HasFont)
             {
                 Color labelColor = Color.Black;
                 renderer.DrawSmallTextCenteredAt($"Apples-{m_playerData.AppleBalance}", TopCol1X, TopRowY, labelColor);
                 renderer.DrawSmallTextCenteredAt($"Win-{m_win}", TopCol2X, TopRowY, labelColor);
+
+                Color helpColor = m_selectedButtonIndex == HelpIndex ? m_visuals.HighlightColor : Color.Black;
+                renderer.DrawSmallTextCenteredAt("?", HelpButtonX, HelpButtonY, helpColor);
 
                 // Current bet value, centered above the bet buttons.
                 renderer.DrawSmallTextCenteredAt($"{m_bet}", BetDisplayX, BetDisplayY, m_visuals.InstructionColor);
@@ -461,7 +575,57 @@ namespace Snake.Core.States
                 DrawButton(renderer, "Back", BotCol4X, BackIndex);
             }
 
+            // Modal paytable overlay (drawn last so it sits on top of everything).
+            if (m_showPaytable)
+            {
+                DrawPaytableOverlay(renderer);
+            }
+
             renderer.DrawTouchControls();
+        }
+
+        private void DrawPaytableOverlay(IGameRenderer renderer)
+        {
+            // Semi-transparent backdrop so the underlying UI is dimmed but still visible.
+            renderer.DrawOverlay(new Color(0, 0, 0, 200));
+
+            if (!renderer.HasFont) return;
+
+            // Title.
+            renderer.DrawCenteredText("PAYTABLE", m_visuals.HighlightColor, -68);
+
+            // Two columns of three symbols each.
+            int[] leftSymbols  = { 0, 2, 4 };  // cherry, coin, seven
+            int[] rightSymbols = { 1, 3, 5 };  // bell, bar, diamond
+            int[] rowYs        = { 44, 66, 88 };
+
+            const int leftSpriteX  = 80;
+            const int leftTextX    = 100;
+            const int rightSpriteX = 138;
+            const int rightTextX   = 158;
+
+            for (int i = 0; i < 3; i++)
+            {
+                DrawPaytableEntry(renderer, leftSymbols[i],  leftSpriteX,  leftTextX,  rowYs[i]);
+                DrawPaytableEntry(renderer, rightSymbols[i], rightSpriteX, rightTextX, rowYs[i]);
+            }
+
+            // Footer rule + dismissal hint. yOffset is relative to canvas vertical center (90).
+            renderer.DrawCenteredText("3 IN A ROW WINS", m_visuals.InstructionColor, 24);
+            renderer.DrawCenteredText("PRESS ACTION TO CLOSE", m_visuals.InstructionColor, 50);
+        }
+
+        private void DrawPaytableEntry(IGameRenderer renderer, int symbolIndex, int spriteX, int textX, int rowY)
+        {
+            int srcCol = symbolIndex % SymbolSheetCols;
+            int srcRow = symbolIndex / SymbolSheetCols;
+            Rectangle src  = new Rectangle(srcCol * SymbolSize, srcRow * SymbolSize, SymbolSize, SymbolSize);
+            Rectangle dest = new Rectangle(spriteX, rowY, SymbolSize, SymbolSize);
+            renderer.DrawSprite(GameRenderer.SlotsSymbols, dest, src);
+
+            int multiplier = SymbolMultipliers[symbolIndex];
+            // '*' renders as a centered times-glyph in this font; use it instead of an 'x'.
+            renderer.DrawSmallTextAt($"{multiplier}*", textX, rowY + 4, m_visuals.InstructionColor, mirror: false);
         }
 
         private void DrawButton(IGameRenderer renderer, string label, int centerX, int index)

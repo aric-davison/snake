@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Snake.Core.Configuration;
 using Snake.Core.Persistence;
@@ -19,29 +20,37 @@ namespace Snake.Core.Engine
             FoodEaten
         }
 
-        // Per upgrade tier, snake moves this much faster (smaller interval) until clamped.
-        private const double SpeedSecondsPerTier = 0.02;
-
-        // Hard floor on update interval so snake never becomes uncontrollably fast.
-        private const double MinUpdateInterval = 0.05;
-
         // Per Apple Value tier, each food yields this many additional apples.
         private const int ApplesPerValueTier = 1;
+
+        // Fortune: per-tier chance for a bonus apple to spawn alongside the primary one.
+        private const float FortuneChancePerTier = 0.10f;
+
+        // Frenzy: per-tier chance for a golden apple to spawn on a food event. Reward is flat.
+        private const float FrenzyChancePerTier = 0.05f;
+        private const float GoldenAppleLifetimeSec = 8f;
+        private const int GoldenAppleReward = 25;
 
         private readonly GameConfig m_config;
         private readonly GameBoard m_board;
         private readonly GameEvents m_events;
+        private readonly Random m_random = new Random();
 
         private Snake m_snake;
         private Food m_food;
+        private Point? m_bonusApple;
+        private GoldenApple m_goldenApple;
         private PlayerData m_playerData;
         private int m_sessionApples;
         private double m_timeSinceLastUpdate;
-        private double m_effectiveInterval;
         private int m_effectiveAppleValue;
+        private float m_fortuneChance;
+        private float m_frenzyChance;
 
         public Snake Snake => m_snake;
         public Food Food => m_food;
+        public Point? BonusApple => m_bonusApple;
+        public GoldenApple GoldenApple => m_goldenApple;
         public int SessionApples => m_sessionApples;
         public int AppleBalance => m_playerData.AppleBalance;
         public GameEvents Events => m_events;
@@ -51,6 +60,7 @@ namespace Snake.Core.Engine
             m_config = config;
             m_board = new GameBoard(config);
             m_events = new GameEvents();
+            m_goldenApple = new GoldenApple();
 
             // Initialize with empty data; SnakeGame will call Reset(PlayerData) before play.
             Reset(new PlayerData());
@@ -64,16 +74,19 @@ namespace Snake.Core.Engine
             m_playerData = playerData;
             m_snake = new Snake(m_config.GridWidth / 2, m_config.GridHeight / 2);
             m_food = new Food();
+            m_bonusApple = null;
+            m_goldenApple.Deactivate();
             m_sessionApples = 0;
             m_timeSinceLastUpdate = 0;
 
-            int speedTier = playerData.GetUpgradeTier(new SpeedUpgrade().Name);
-            m_effectiveInterval = Math.Max(
-                MinUpdateInterval,
-                m_config.UpdateInterval - SpeedSecondsPerTier * speedTier);
-
             int appleValueTier = playerData.GetUpgradeTier(new AppleValueUpgrade().Name);
             m_effectiveAppleValue = m_config.ApplesPerFood + ApplesPerValueTier * appleValueTier;
+
+            int fortuneTier = playerData.GetUpgradeTier(new FortuneUpgrade().Name);
+            m_fortuneChance = FortuneChancePerTier * fortuneTier;
+
+            int frenzyTier = playerData.GetUpgradeTier(new FrenzyUpgrade().Name);
+            m_frenzyChance = FrenzyChancePerTier * frenzyTier;
 
             m_food.Spawn(m_board, m_snake);
         }
@@ -85,9 +98,12 @@ namespace Snake.Core.Engine
 
         public UpdateResult Update(double deltaTime)
         {
+            // Tick the golden apple lifetime every frame, independent of snake step rate.
+            m_goldenApple.Tick((float)deltaTime);
+
             m_timeSinceLastUpdate += deltaTime;
 
-            if (m_timeSinceLastUpdate >= m_effectiveInterval)
+            if (m_timeSinceLastUpdate >= m_config.UpdateInterval)
             {
                 m_timeSinceLastUpdate = 0;
 
@@ -105,21 +121,81 @@ namespace Snake.Core.Engine
                     return UpdateResult.GameOver;
                 }
 
+                // Snake-eat checks: golden first (highest reward), then bonus, then primary.
+                if (m_goldenApple.Active && m_snake.Head == m_goldenApple.Position)
+                {
+                    m_sessionApples += GoldenAppleReward;
+                    m_playerData.AppleBalance += GoldenAppleReward;
+                    m_snake.Grow();
+                    m_goldenApple.Deactivate();
+                    OnFoodEaten();
+                    return UpdateResult.FoodEaten;
+                }
+
+                if (m_bonusApple.HasValue && m_snake.Head == m_bonusApple.Value)
+                {
+                    m_sessionApples += m_effectiveAppleValue;
+                    m_playerData.AppleBalance += m_effectiveAppleValue;
+                    m_snake.Grow();
+                    m_bonusApple = null;
+                    OnFoodEaten();
+                    return UpdateResult.FoodEaten;
+                }
+
                 if (m_snake.Head == m_food.Position)
                 {
                     m_sessionApples += m_effectiveAppleValue;
                     m_playerData.AppleBalance += m_effectiveAppleValue;
                     m_snake.Grow();
                     m_food.Spawn(m_board, m_snake);
-
-                    m_events.RaiseFoodEaten();
-                    m_events.RaiseScoreChanged(m_sessionApples);
-
+                    OnFoodEaten();
                     return UpdateResult.FoodEaten;
                 }
             }
 
             return UpdateResult.Continue;
+        }
+
+        private void OnFoodEaten()
+        {
+            // Roll Fortune: if no bonus apple is on the board, maybe spawn one.
+            if (!m_bonusApple.HasValue && m_random.NextDouble() < m_fortuneChance)
+            {
+                Point? pos = PickFreeCell();
+                if (pos.HasValue) m_bonusApple = pos;
+            }
+
+            // Roll Frenzy: if no golden apple is currently active, maybe spawn one.
+            if (!m_goldenApple.Active && m_random.NextDouble() < m_frenzyChance)
+            {
+                Point? pos = PickFreeCell();
+                if (pos.HasValue) m_goldenApple.Spawn(pos.Value, GoldenAppleLifetimeSec);
+            }
+
+            m_events.RaiseFoodEaten();
+            m_events.RaiseScoreChanged(m_sessionApples);
+        }
+
+        /// <summary>
+        /// Picks a random grid cell that is not occupied by the snake or any active apple.
+        /// Returns null if no free cell could be found within the attempt budget.
+        /// </summary>
+        private Point? PickFreeCell()
+        {
+            for (int attempt = 0; attempt < 100; attempt++)
+            {
+                int x = m_random.Next(0, m_config.GridWidth);
+                int y = m_random.Next(0, m_config.GridHeight);
+                Point p = new Point(x, y);
+
+                if (m_snake.AllSegments.Contains(p)) continue;
+                if (m_food.Position == p) continue;
+                if (m_bonusApple.HasValue && m_bonusApple.Value == p) continue;
+                if (m_goldenApple.Active && m_goldenApple.Position == p) continue;
+
+                return p;
+            }
+            return null;
         }
 
         private bool CheckWallCollision()

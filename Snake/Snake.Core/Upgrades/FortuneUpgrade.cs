@@ -2,15 +2,15 @@ using Snake.Core.Persistence;
 
 namespace Snake.Core.Upgrades
 {
-    public class AppleMagnetUpgrade : IUpgrade
+    public class FortuneUpgrade : IUpgrade
     {
-        public string Name => "Apple Magnet";
-        public string DisplayName => "Magnet";
-        public string Description => "Apples are drawn toward the snake from a wider range.";
+        public string Name => "Fortune";
+        public string DisplayName => "Fortune";
+        public string Description => "Chance for a\nbonus apple\nto spawn.";
         public int CurrentTier { get; set; }
-        public int MaxTier => 3;
+        public int MaxTier => 5;
 
-        public int GetCost(int tier) => 25 * (tier + 1);
+        public int GetCost(int tier) => 20 * (tier + 1);
 
         public void Apply(PlayerData data)
         {

@@ -63,6 +63,14 @@ namespace Snake.Core.States
         {
             renderer.DrawGrid(m_config.GridWidth, m_config.GridHeight);
             renderer.DrawFood(m_engine.Food);
+            if (m_engine.BonusApple.HasValue)
+            {
+                renderer.DrawAppleAt(m_engine.BonusApple.Value, Color.LightGreen);
+            }
+            if (m_engine.GoldenApple.Active)
+            {
+                renderer.DrawGoldenAppleAt(m_engine.GoldenApple.Position);
+            }
             renderer.DrawSnake(m_engine.Snake);
             renderer.DrawApples(m_engine.SessionApples, m_engine.AppleBalance);
             renderer.DrawTouchControls();
