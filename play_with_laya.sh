@@ -6,4 +6,6 @@
 # See agent/README.md.
 set -euo pipefail
 cd "$(dirname "$0")"
+# dotnet-install.sh puts the SDK in ~/.dotnet without adding it to PATH
+command -v dotnet >/dev/null || export PATH="$HOME/.dotnet:$PATH"
 exec dotnet run --project Snake/Snake.DesktopGL -c Release -- --laya "$@"

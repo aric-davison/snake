@@ -163,7 +163,7 @@ namespace Snake.Core.Agent
                         Status = "LAYA: READY";
                         break;
 
-                    case "decision" when reply.Id == m_pendingId:
+                    case "decision" when reply.Id >= 0 && reply.Id == m_pendingId:
                         m_decidedFor = m_pendingFor;
                         m_decision = reply.Direction;
                         m_pendingId = -1;
@@ -173,7 +173,7 @@ namespace Snake.Core.Agent
                         }
                         break;
 
-                    case "error" when reply.Id == m_pendingId:
+                    case "error" when reply.Id >= 0 && reply.Id == m_pendingId:
                         m_decidedFor = m_pendingFor;
                         m_decision = null;
                         m_pendingId = -1;
