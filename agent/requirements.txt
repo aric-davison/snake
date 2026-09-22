@@ -1,0 +1,5 @@
+# Laya pulls in torch, transformers and huggingface_hub. Python 3.10+.
+laya>=0.3.6
+
+# Only needed to run agent/tests
+pytest

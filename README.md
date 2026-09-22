@@ -23,6 +23,8 @@ and iOS from a single shared game core.
 - **Persistence** — player data saved as JSON to the platform's application-data directory
 - **Adaptive layout** — the play area recalculates and letterboxes to fit any window size or
   aspect ratio, including touch controls on mobile targets
+- **AI player** — [Laya](https://github.com/NandhaKishorM/laya), a non-autoregressive decision
+  model, can play the game and collect apples (`--laya`, see [Playing with Laya](#playing-with-laya))
 
 ## Screenshots
 
@@ -78,6 +80,7 @@ manager subscribes to `FoodEaten` rather than the engine knowing audio exists).
 ```
 Snake/
 ├── Snake.Core/          Shared game logic — no platform dependencies
+│   ├── Agent/           AgentController, AgentProtocol, IAgentLink (external AI players)
 │   ├── Engine/          GameEngine, GameEvents
 │   ├── States/          Menu, Playing, Paused, GameOver, Settings, UpgradeShop, Slots
 │   ├── Rendering/       IGameRenderer, GameRenderer
@@ -88,9 +91,10 @@ Snake/
 │   ├── Minigames/       IMinigame, SlotsMinigame, MinigameResult
 │   ├── Configuration/   GameConfig, VisualConfig, LayoutConfig
 │   └── Content/         Sprites, fonts, audio (MonoGame content pipeline)
-├── Snake.DesktopGL/     Windows / Linux / macOS entry point
+├── Snake.DesktopGL/     Windows / Linux / macOS entry point (+ LayaSidecar)
 ├── Snake.Android/       Android entry point
 └── Snake.iOS/           iOS entry point
+agent/                   Python side of the Laya player, simulator and benchmark
 ```
 
 ### Design document
@@ -147,6 +151,23 @@ dotnet workload install android ios
 ```
 
 ---
+
+## Playing with Laya
+
+Laya can play the desktop build: it steers the snake, and restarts the game after each game over.
+The game starts the Python agent as a child process and exchanges one JSON line per snake move with it.
+
+```bash
+pip install -r agent/requirements.txt        # Python 3.10+; pulls in torch
+LAYA_PYTHON=$(which python) ./play_with_laya.sh
+```
+
+The first launch downloads the ~800 MB checkpoint from Hugging Face. The window title shows each
+decision (`LAYA: UP 97%`) and the agent logs each game's apples to the terminal. The keyboard
+still works: arrow keys override Laya, and Esc saves and quits. The agent doesn't play the slots
+or buy upgrades.
+
+Setup, options, how it decides, and benchmark results are in **[agent/README.md](agent/README.md)**.
 
 ## Controls
 

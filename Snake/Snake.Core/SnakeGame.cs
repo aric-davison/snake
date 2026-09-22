@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Snake.Core.Agent;
 using Snake.Core.Audio;
 using Snake.Core.Configuration;
 using Snake.Core.Engine;
@@ -42,8 +43,15 @@ namespace Snake.Core
         private Dictionary<GameState, IGameStateHandler> m_states;
         private IGameStateHandler m_currentState;
 
-        public SnakeGame()
+        // Optional external agent (e.g. Laya) playing in place of the keyboard
+        private readonly IAgentLink m_agentLink;
+        private AgentController m_agent;
+
+        /// <param name="agentLink">Connection to an agent that should play the game, or null for human play.
+        /// The caller owns the link and disposes it.</param>
+        public SnakeGame(IAgentLink agentLink = null)
         {
+            m_agentLink = agentLink;
             m_graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
@@ -96,6 +104,11 @@ namespace Snake.Core
             m_audioManager.LoadContent(Content);
             m_engine.Events.FoodEaten += m_audioManager.PlayAppleCrunch;
 
+            if (m_agentLink != null)
+            {
+                m_agent = new AgentController(m_agentLink, m_engine, m_gameConfig);
+            }
+
             var upgrades = new IUpgrade[]
             {
                 new AppleValueUpgrade(),
@@ -138,6 +151,23 @@ namespace Snake.Core
                 m_saveManager.Save(m_playerData);
                 Exit();
                 return;
+            }
+
+            // Let the agent steer. It holds the frame while it decides the snake's next move.
+            // Its status goes in the title bar; the HUD has no room beside the apple counter.
+            if (m_agent != null)
+            {
+                bool proceed = m_agent.Update(m_currentState.StateType, input, gameTime.ElapsedGameTime.TotalSeconds);
+                string title = "Snake - " + m_agent.Status;
+                if (Window.Title != title)
+                {
+                    Window.Title = title;
+                }
+                if (!proceed)
+                {
+                    base.Update(gameTime);
+                    return;
+                }
             }
 
             // Update current state and check for transitions

@@ -59,6 +59,11 @@ namespace Snake.Core
         /// </summary>
         public Direction CurrentDirection => m_direction;
 
+        /// <summary>
+        /// True if the next move will keep the tail in place (the snake just ate).
+        /// </summary>
+        public bool IsGrowing => m_shouldGrow;
+
         #endregion
 
         #region Public Methods

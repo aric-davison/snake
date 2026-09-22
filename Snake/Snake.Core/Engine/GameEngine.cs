@@ -29,7 +29,7 @@ namespace Snake.Core.Engine
         // Frenzy: per-tier chance for a golden apple to spawn on a food event. Reward is flat.
         private const float FrenzyChancePerTier = 0.05f;
         private const float GoldenAppleLifetimeSec = 8f;
-        private const int GoldenAppleReward = 25;
+        public const int GoldenAppleReward = 25;
 
         private readonly GameConfig m_config;
         private readonly GameBoard m_board;
@@ -54,6 +54,17 @@ namespace Snake.Core.Engine
         public int SessionApples => m_sessionApples;
         public int AppleBalance => m_playerData.AppleBalance;
         public GameEvents Events => m_events;
+        public int AppleValue => m_effectiveAppleValue;
+
+        /// <summary>
+        /// Number of snake moves made in the current run.
+        /// </summary>
+        public int StepCount { get; private set; }
+
+        /// <summary>
+        /// Incremented on every Reset, so (RunNumber, StepCount) identifies one board position.
+        /// </summary>
+        public int RunNumber { get; private set; }
 
         public GameEngine(GameConfig config)
         {
@@ -78,6 +89,8 @@ namespace Snake.Core.Engine
             m_goldenApple.Deactivate();
             m_sessionApples = 0;
             m_timeSinceLastUpdate = 0;
+            StepCount = 0;
+            RunNumber++;
 
             int appleValueTier = playerData.GetUpgradeTier(new AppleValueUpgrade().Name);
             m_effectiveAppleValue = m_config.ApplesPerFood + ApplesPerValueTier * appleValueTier;
@@ -96,6 +109,14 @@ namespace Snake.Core.Engine
             m_snake.SetDirection(direction);
         }
 
+        /// <summary>
+        /// True if an Update with this deltaTime would move the snake.
+        /// </summary>
+        public bool IsStepDue(double deltaTime)
+        {
+            return m_timeSinceLastUpdate + deltaTime >= m_config.UpdateInterval;
+        }
+
         public UpdateResult Update(double deltaTime)
         {
             // Tick the golden apple lifetime every frame, independent of snake step rate.
@@ -108,6 +129,7 @@ namespace Snake.Core.Engine
                 m_timeSinceLastUpdate = 0;
 
                 m_snake.Move();
+                StepCount++;
 
                 if (CheckWallCollision())
                 {
